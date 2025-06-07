@@ -2,11 +2,13 @@ on:
   workflow_dispatch:
   pull_request:
     # The branches below must be a subset of the branches above
-    branches: [ "master" ]
+    branches:
+      - master
 
   deploy:
+        fetch-depth: 0
         name: robotframework-lsp
-        path: ./robotframework-ls/src/dist
+        path: ./robotframework-ls/src/dist/*
 jobs:
   deploy:
     runs-on: ubuntu-latest
