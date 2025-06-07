@@ -1,5 +1,8 @@
 on:
   workflow_dispatch:
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "master" ]
 
 name: Manual Build Artifacts - RobotFramework Language Server Extension
 jobs:
