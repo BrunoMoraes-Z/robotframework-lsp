@@ -2,13 +2,9 @@ on:
   workflow_dispatch:
   pull_request:
     # The branches below must be a subset of the branches above
-    branches:
-      - master
+    branches: [ "master" ]
 
-  deploy:
-        fetch-depth: 0
-        name: robotframework-lsp
-        path: ./robotframework-ls/src/dist/*
+name: Manual Build Artifacts - RobotFramework Language Server Extension
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -24,6 +20,7 @@ jobs:
       uses: actions/checkout@v1
       with:
         submodules: recursive
+        fetch-depth: 0
 
     - name: Setup node
       uses: actions/setup-node@v1
