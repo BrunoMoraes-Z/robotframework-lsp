@@ -151,6 +151,23 @@ _SNIPPETS_RF5 = {
     },
 }
 
+_SNIPPETS_RF7 = {
+    "GROUP STATEMENT": {
+        "prefix": "GROUP",
+        "body": [
+            "GROUP<sp>${1:name}",
+            "    $0",
+            "END",
+        ],
+        "description": "Snippet of a GROUP statement",
+    },
+    "VAR STATEMENT": {
+        "prefix": "VAR",
+        "body": ["VAR<sp>${1:var}<sp>${2:value}"],
+        "description": "Snippet of a VAR assignment",
+    },
+}
+
 _SNIPPETS_SORTED = None
 
 
@@ -164,6 +181,9 @@ def _get_global_snippets():
 
         if get_robot_major_version() >= 5:
             use.update(_SNIPPETS_RF5)
+
+        if get_robot_major_version() >= 7:
+            use.update(_SNIPPETS_RF7)
 
         _SNIPPETS_SORTED = sorted(use.items())
 

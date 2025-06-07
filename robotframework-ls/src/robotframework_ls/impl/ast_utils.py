@@ -1089,6 +1089,7 @@ def iter_local_assigns(ast) -> Iterator[VarTokenInfo]:
         ("ExceptHeader", Token.VARIABLE),  # RF <= 6.1
         ("ExceptHeader", Token.ASSIGN),  # RF > 6.1
         ("InlineIfHeader", Token.ASSIGN),
+        ("Var", Token.VARIABLE),  # RF 7+
     ):
         for node_info in ast.iter_indexed(clsname):
             node = node_info.node
