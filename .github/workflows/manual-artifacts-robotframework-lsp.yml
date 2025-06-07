@@ -3,7 +3,6 @@ on:
   pull_request:
     # The branches below must be a subset of the branches above
     branches: [ "master" ]
-
 name: Manual Build Artifacts - RobotFramework Language Server Extension
 jobs:
   deploy:
@@ -12,21 +11,26 @@ jobs:
       run:
         working-directory: ./robotframework-ls
     
-    strategy:
-      fail-fast: true
 
-    steps:
-    - name: Checkout repository and submodules
-      uses: actions/checkout@v1
+
+
+
+
+    
+    
+    
+    # - name: Fix README references
+    #   run: python -m dev fix-readme
+    
+        
+
+    # Publish - VSCode Artifact
+
+    # Publish - lsp Artifact
+    - uses: actions/upload-artifact@v4
       with:
-        submodules: recursive
-        fetch-depth: 0
-
-    - name: Setup node
-      uses: actions/setup-node@v1
-      with:
-        node-version: 18.x
-
+        name: robotframework-lsp-dist
+        path: ./robotframework-ls/src/dist
     - name: Yarn install
       run: yarn install
 
