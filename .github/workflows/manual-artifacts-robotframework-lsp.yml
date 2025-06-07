@@ -1,11 +1,12 @@
 on:
   workflow_dispatch:
-        fetch-depth: 0
-    - name: Save built Python distribution
-      uses: actions/upload-artifact@v4
-      with:
+  pull_request:
+    # The branches below must be a subset of the branches above
+    branches: [ "master" ]
+
+  deploy:
         name: robotframework-lsp
-        path: ./robotframework-ls/src/dist/*
+        path: ./robotframework-ls/src/dist
 jobs:
   deploy:
     runs-on: ubuntu-latest
