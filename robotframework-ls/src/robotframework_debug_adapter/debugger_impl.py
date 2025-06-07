@@ -614,7 +614,13 @@ Evaluation
 
             kw = Keyword(name, args=node.args, assign=assign)
             ctx = info.execution_context
-            return EvaluationResult(kw.run(ctx))
+            try:
+                from robot.result import Keyword as KeywordResult  # type: ignore
+            except Exception:
+                return EvaluationResult(kw.run(ctx))
+            else:
+                result = KeywordResult()
+                return EvaluationResult(kw.run(result, ctx))
 
         raise UnableToEvaluateError("Unable to evaluate: %s" % (self.expression,))
 
