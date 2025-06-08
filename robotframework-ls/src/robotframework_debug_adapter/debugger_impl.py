@@ -577,10 +577,11 @@ class _EvaluationInfo(object):
         if self.context == "hover":
             try:
                 ctx = info.execution_context
-                return EvaluationResult(
-                    ctx.namespace.get_runner(self.expression).longname
-                )
-            except:
+                runner = ctx.namespace.get_runner(self.expression)
+                if hasattr(runner, "keyword"):
+                    return EvaluationResult(runner.keyword.full_name)
+                return EvaluationResult(runner.longname)
+            except Exception:
                 log.exception("Error on hover evaluation: %s", self.expression)
                 return EvaluationResult("")
 
@@ -617,6 +618,8 @@ Evaluation
             try:
                 from robot.result import Keyword as KeywordResult  # type: ignore
             except Exception:
+                # Older Robot Framework versions did not have KeywordResult and
+                # the signature for `run` only expected the context.
                 return EvaluationResult(kw.run(ctx))
             else:
                 result = KeywordResult()
