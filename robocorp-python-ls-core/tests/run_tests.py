@@ -49,12 +49,15 @@ def main():
         initial_time = time.time()
         try:
             args = [sys.executable, "-m", "pytest"] + pytest_args
+            env = os.environ.copy()
+            src_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "src")
+            env["PYTHONPATH"] = os.pathsep.join([src_dir, env.get("PYTHONPATH", "")])
             timeout = int(os.environ.get("RUN_TESTS_TIMEOUT", "100"))
             write(
                 "Calling:\n  cwd:%s\n  args: %s\n  timeout: %s"
                 % (os.path.abspath(os.getcwd()), args, timeout)
             )
-            process = subprocess.Popen(args)
+            process = subprocess.Popen(args, env=env)
             pid = process.pid
             while (time.time() - initial_time) < timeout:
                 time.sleep(1)
