@@ -25,9 +25,9 @@ def _gather_type_names(completion_context: ICompletionContext) -> List[str]:
 def _matches_context(prefix: str) -> bool:
     import re
 
-    if re.search(r"\$\{[^}:]+:\s*$", prefix):
+    if re.search(r"\$\{[^}:]+:\s+$", prefix):
         return True
-    if re.search(r"\bVAR\s+[^:=]+:\s*$", prefix):
+    if re.search(r"\bVAR\s+[^:=]+:\s+$", prefix):
         return True
     return False
 
@@ -35,7 +35,7 @@ def _matches_context(prefix: str) -> bool:
 def complete(completion_context: ICompletionContext) -> List[CompletionItemTypedDict]:
     line = completion_context.doc.get_line(completion_context.sel.line)
     prefix = line[: completion_context.sel.col]
-    if not prefix.endswith(":"):
+    if ":" not in prefix:
         return []
 
     if not _matches_context(prefix):

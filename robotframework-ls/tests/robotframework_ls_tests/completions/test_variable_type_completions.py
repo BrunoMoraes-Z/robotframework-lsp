@@ -12,7 +12,7 @@ def test_type_completion_after_colon(workspace, libspec_manager):
     workspace.set_root("case_vars_file", libspec_manager=libspec_manager)
     doc, selected = workspace.put_doc_get_line_col(
         "typed.robot",
-        "*** Test Cases ***\nTest\n    ${var:|}\n",
+        "*** Test Cases ***\nTest\n    ${var: |}\n",
     )
     line, col = selected.get_end_line_col()
     completions = complete_all(

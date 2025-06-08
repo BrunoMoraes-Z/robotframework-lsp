@@ -18,7 +18,9 @@ def _iter_normalized_variables_and_values(
     completion_context: ICompletionContext,
 ) -> Iterator[Tuple[str, Tuple[str, ...]]]:
     from robot.api import Token
-    from robotframework_ls.impl.variable_resolve import robot_search_variable
+    from robotframework_ls.impl.variable_resolve import (
+        extract_variable_base,
+    )
     from robotframework_ls.impl.text_utilities import normalize_robot_name
 
     for node_info in completion_context.get_all_variables():
@@ -27,11 +29,10 @@ def _iter_normalized_variables_and_values(
         if token is None:
             continue
         var_name = token.value
-        robot_match = robot_search_variable(var_name)
-        if robot_match and robot_match.base:
-            # i.e.: Variable.value provides the values of the assign
+        base_name = extract_variable_base(var_name)
+        if base_name:
             var_value: Tuple[str, ...] = node.value
-            yield (normalize_robot_name(robot_match.base), var_value)
+            yield (normalize_robot_name(base_name), var_value)
 
 
 def _as_dictionary(
@@ -87,6 +88,7 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
     from robotframework_ls.impl.ast_utils import iter_robot_match_as_tokens
     from robotframework_ls.impl.text_utilities import normalize_robot_name
     from robotframework_ls.impl.variable_resolve import robot_search_variable
+    import re
 
     token_info = completion_context.get_current_token()
     if token_info is None:
@@ -95,6 +97,29 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
     value = token.value
 
     col = completion_context.sel.col
+
+    prefix_before_col = value[: col - token.col_offset]
+    m = re.search(r"[$@&]\{([^}:]+)(?::[^}]+)?\.(\w*)\}?$", prefix_before_col)
+    if m:
+        base_name = m.group(1)
+        filter_token = normalize_robot_name(m.group(2))
+        start_offset = token.col_offset + m.start(2)
+        end_offset = col
+
+        normalized_vars = dict(_iter_all_normalized_variables_and_values(completion_context))
+        variable_values = normalized_vars.get(normalize_robot_name(base_name))
+        if not variable_values:
+            return []
+
+        try:
+            dictionary = _as_dictionary(variable_values, filter_token=filter_token)
+        except Exception:
+            return []
+        editor_range = Range(
+            start=Position(completion_context.sel.line, start_offset),
+            end=Position(completion_context.sel.line, end_offset),
+        )
+        return _completion_items(dictionary, editor_range)
 
     last_opening_bracket_column = -1
 
