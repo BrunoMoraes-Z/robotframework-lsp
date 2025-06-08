@@ -5,16 +5,12 @@ from robocorp_ls_core.lsp import DocumentSymbolTypedDict, SymbolKind
 
 
 def collect_children(ast) -> List[DocumentSymbolTypedDict]:
-    from robotframework_ls.impl import ast_utils
     from robot.api import Token
     from robotframework_ls.impl.ast_utils import create_range_from_token
 
     ret: List[DocumentSymbolTypedDict] = []
 
-    for node_info in ast_utils.iter_nodes(
-        ast, accept_class=("Keyword", "TestCase", "Variable")
-    ):
-        node = node_info.node
+    for node in getattr(ast, "body", []):
         classname = node.__class__.__name__
         if classname == "Keyword":
             token = node.header.get_token(Token.KEYWORD_NAME)
@@ -24,6 +20,7 @@ def collect_children(ast) -> List[DocumentSymbolTypedDict]:
                 "kind": SymbolKind.Function,
                 "range": symbol_range,
                 "selectionRange": symbol_range,
+                "children": collect_children(node),
             }
             ret.append(doc_symbol)
 
@@ -35,6 +32,7 @@ def collect_children(ast) -> List[DocumentSymbolTypedDict]:
                 "kind": SymbolKind.Class,
                 "range": symbol_range,
                 "selectionRange": symbol_range,
+                "children": collect_children(node),
             }
             ret.append(doc_symbol)
 
@@ -46,6 +44,22 @@ def collect_children(ast) -> List[DocumentSymbolTypedDict]:
                 "kind": SymbolKind.Variable,
                 "range": symbol_range,
                 "selectionRange": symbol_range,
+            }
+            ret.append(doc_symbol)
+
+        elif classname == "Group":
+            header = node.header
+            token = header.get_token(Token.ARGUMENT)
+            name = node.name if node.name is not None else "GROUP"
+            if token is None:
+                token = header.get_token(Token.GROUP)
+            symbol_range = create_range_from_token(token)
+            doc_symbol = {
+                "name": str(name),
+                "kind": SymbolKind.Module,
+                "range": symbol_range,
+                "selectionRange": symbol_range,
+                "children": collect_children(node),
             }
             ret.append(doc_symbol)
 
