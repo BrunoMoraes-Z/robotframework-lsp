@@ -10,11 +10,24 @@ from robocorp_ls_core.lsp import (
     CompletionItemTypedDict,
 )
 from robotframework_ls.impl.protocols import ICompletionContext
+from robotframework_ls.impl.robot_version import robot_version_supports_variable_types
 
 
 import datetime
 
-_BUILTIN_TYPES = [str, int, float, bool, list, tuple, dict, set, bytes, datetime.date]
+_BUILTIN_TYPES = [
+    str,
+    int,
+    float,
+    bool,
+    list,
+    tuple,
+    dict,
+    set,
+    bytes,
+    datetime.date,
+    datetime.datetime,
+]
 
 
 def _gather_type_names(completion_context: ICompletionContext) -> List[str]:
@@ -33,6 +46,8 @@ def _matches_context(prefix: str) -> bool:
 
 
 def complete(completion_context: ICompletionContext) -> List[CompletionItemTypedDict]:
+    if not robot_version_supports_variable_types():
+        return []
     line = completion_context.doc.get_line(completion_context.sel.line)
     prefix = line[: completion_context.sel.col]
     if ":" not in prefix:

@@ -75,3 +75,8 @@ def get_robot_major_minor_version() -> Tuple[int, int]:
 
 def robot_version_supports_language():
     return get_robot_major_minor_version() >= (5, 1)
+
+
+def robot_version_supports_variable_types() -> bool:
+    """Return True if the Robot Framework version supports typed variables."""
+    return get_robot_major_minor_version() >= (7, 3)
