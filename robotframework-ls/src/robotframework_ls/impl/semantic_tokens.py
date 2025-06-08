@@ -127,7 +127,7 @@ def _iter_dependent_names(context: ICompletionContext) -> Iterator[str]:
     try:
         dependency_graph = context.collect_dependency_graph()
     except Exception:
-        return iter(())
+        return
 
     for library in dependency_graph.iter_all_libraries():
         name = library.name
