@@ -52,7 +52,7 @@ def collect_children(ast) -> List[DocumentSymbolTypedDict]:
             token = header.get_token(Token.ARGUMENT)
             name = node.name if node.name is not None else "GROUP"
             if token is None:
-                token = header.get_token(Token.GROUP)  # type: ignore[attr-defined]
+                token = header.get_token(Token.GROUP)
             symbol_range = create_range_from_token(token)
             doc_symbol = {
                 "name": str(name),
