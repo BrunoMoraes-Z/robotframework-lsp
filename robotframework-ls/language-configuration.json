@@ -52,7 +52,7 @@
         // Whitelist some cases where '...' should not be added
         {
             "beforeText": ".*",
-            "afterText": "^\\s*(RETURN|ELSE|IF|TRY|EXCEPT|END|FINALLY|WHILE|BREAK|CONTINUE).*",
+            "afterText": "^\\s*(RETURN|ELSE|IF|TRY|EXCEPT|END|FINALLY|WHILE|BREAK|CONTINUE|GROUP).*",
             "action": {
                 "indent": "none",
                 "appendText": ""

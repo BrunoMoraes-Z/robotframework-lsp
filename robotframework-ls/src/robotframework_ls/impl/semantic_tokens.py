@@ -117,14 +117,18 @@ def _get_potential_library_names_from_keyword(keyword_name: str) -> Iterator[str
 
 
 def _iter_dependent_names(context: ICompletionContext) -> Iterator[str]:
-    """
-    Provides names which can be used as (library/resource) prefixes
-    for keyword calls.
+    """Yield names which can be used as (library/resource) prefixes.
 
-    Note: names returned are all lower-case as case should not be taken into
-    account for matches.
+    Names are returned in lower case so that case is ignored in matches. When
+    the dependency graph cannot be collected (i.e. no workspace available), an
+    empty iterator is returned instead of raising an exception so that semantic
+    highlighting still works in limited contexts.
     """
-    dependency_graph = context.collect_dependency_graph()
+    try:
+        dependency_graph = context.collect_dependency_graph()
+    except Exception:
+        return iter(())
+
     for library in dependency_graph.iter_all_libraries():
         name = library.name
         if name:
@@ -289,7 +293,7 @@ def _tokenize_token(
     if use_token.type != use_token_type:
         use_token = copy_token_replacing(use_token, type=use_token_type)
 
-    if use_token_type == KEYWORD:
+    if use_token_type in (KEYWORD, ERROR):
         token_keyword = use_token
 
         token_gherkin_prefix, token_keyword = _extract_gherkin_token_from_keyword(
@@ -309,8 +313,8 @@ def _tokenize_token(
                 token_library_prefix,
                 scope.get_index_from_internal_token_type(token_library_prefix.type),
             )
-
         use_token = token_keyword
+
 
     try:
         iter_in = _tokenize_variables(use_token)
