@@ -117,14 +117,18 @@ def _get_potential_library_names_from_keyword(keyword_name: str) -> Iterator[str
 
 
 def _iter_dependent_names(context: ICompletionContext) -> Iterator[str]:
-    """
-    Provides names which can be used as (library/resource) prefixes
-    for keyword calls.
+    """Yield names which can be used as (library/resource) prefixes.
 
-    Note: names returned are all lower-case as case should not be taken into
-    account for matches.
+    Names are returned in lower case so that case is ignored in matches. When
+    the dependency graph cannot be collected (i.e. no workspace available), an
+    empty iterator is returned instead of raising an exception so that semantic
+    highlighting still works in limited contexts.
     """
-    dependency_graph = context.collect_dependency_graph()
+    try:
+        dependency_graph = context.collect_dependency_graph()
+    except Exception:
+        return iter(())
+
     for library in dependency_graph.iter_all_libraries():
         name = library.name
         if name:
