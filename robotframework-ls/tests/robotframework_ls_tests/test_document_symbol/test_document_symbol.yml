@@ -49,7 +49,8 @@
       character: 0
       line: 5
 - children:
-  - kind: 5
+  - children: []
+    kind: 5
     name: Some Test
     range:
       end:
@@ -82,7 +83,8 @@
       character: 0
       line: 8
 - children:
-  - kind: 5
+  - children: []
+    kind: 5
     name: Some Task
     range:
       end:
@@ -98,7 +100,8 @@
       start:
         character: 0
         line: 13
-  - kind: 5
+  - children: []
+    kind: 5
     name: Some Task 2
     range:
       end:
@@ -131,7 +134,8 @@
       character: 0
       line: 12
 - children:
-  - kind: 12
+  - children: []
+    kind: 12
     name: Some Keyword
     range:
       end:

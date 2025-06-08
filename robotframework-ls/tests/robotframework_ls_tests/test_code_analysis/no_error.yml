@@ -1,1 +1,10 @@
-[]
+- message: 'Multiple keywords matching: ''I execute "ls" with "-lh"'' in current file.'
+  range:
+    end:
+      character: 29
+      line: 4
+    start:
+      character: 4
+      line: 4
+  severity: 1
+  source: robotframework
