@@ -24,7 +24,9 @@ def test_type_completion_after_colon(workspace, libspec_manager):
     assert "MyVars" not in labels
 
 
-def test_type_completion_disabled_for_old_version(workspace, libspec_manager, monkeypatch):
+def test_type_completion_disabled_for_old_version(
+    workspace, libspec_manager, monkeypatch
+):
     from robotframework_ls.impl import robot_version
 
     monkeypatch.setattr(robot_version, "get_robot_major_minor_version", lambda: (7, 2))
@@ -39,5 +41,3 @@ def test_type_completion_disabled_for_old_version(workspace, libspec_manager, mo
         CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
     )
     assert completions == []
-
-

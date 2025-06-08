@@ -8,9 +8,12 @@ class Token:
     TASK_HEADER: str  # Note: not available on ALL RF versions (added in 5.1)
     KEYWORD_HEADER: str
     COMMENT_HEADER: str
+    INVALID_HEADER: str
+    FATAL_INVALID_HEADER: str
 
     TESTCASE_NAME: str
     KEYWORD_NAME: str
+    SUITE_NAME: str
 
     DOCUMENTATION: str
     SUITE_SETUP: str
@@ -20,8 +23,10 @@ class Token:
     TEST_TEARDOWN: str
     TEST_TEMPLATE: str
     TEST_TIMEOUT: str
+    TEST_TAGS: str
     FORCE_TAGS: str
     DEFAULT_TAGS: str
+    KEYWORD_TAGS: str
     LIBRARY: str
     RESOURCE: str
     VARIABLES: str
@@ -52,13 +57,17 @@ class Token:
     FINALLY: str
     AS: str
     WHILE: str
+    VAR: str
     RETURN_STATEMENT: str
     CONTINUE: str
     BREAK: str
+    OPTION: str
+    GROUP: str
 
     SEPARATOR: str
     COMMENT: str
     CONTINUATION: str
+    CONFIG: str
     EOL: str
     EOS: str
 

@@ -1,5 +1,12 @@
 from typing import List
-from robocorp_ls_core.lsp import CompletionItem, CompletionItemKind, InsertTextFormat, Position, Range, TextEdit
+from robocorp_ls_core.lsp import (
+    CompletionItem,
+    CompletionItemKind,
+    InsertTextFormat,
+    Position,
+    Range,
+    TextEdit,
+)
 from robotframework_ls.impl.protocols import ICompletionContext
 
 _SCOPES = ("GLOBAL", "SUITE", "TEST", "TASK", "LOCAL")

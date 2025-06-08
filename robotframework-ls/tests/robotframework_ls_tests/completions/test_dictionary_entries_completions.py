@@ -279,6 +279,8 @@ Dictionary Variable
     config = RobotConfig()
     config.update({OPTION_ROBOT_COMPLETIONS_DICTIONARY_ENTRIES_ENABLE: False})
     completions = dictionary_completions.complete(
-        CompletionContext(doc, workspace=workspace.ws, line=line, col=col, config=config)
+        CompletionContext(
+            doc, workspace=workspace.ws, line=line, col=col, config=config
+        )
     )
     assert completions == []
