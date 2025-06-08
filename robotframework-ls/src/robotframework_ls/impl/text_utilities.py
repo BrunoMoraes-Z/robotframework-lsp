@@ -94,7 +94,6 @@ def matches_name_with_variables(name: str, name_with_variables: str) -> bool:
     """
 
     from robotframework_ls.impl import ast_utils
-    from robotframework_ls.impl.variable_resolve import extract_variable_base
 
     try:
         tokenized_vars = ast_utils.tokenize_variables_from_name(name_with_variables)
@@ -104,22 +103,19 @@ def matches_name_with_variables(name: str, name_with_variables: str) -> bool:
         regexp = []
         for t in tokenized_vars:
             if t.type == t.VARIABLE:
-                variable_base = extract_variable_base(t.value)
-                i = variable_base.find(":")
-                if i > 0:
-                    custom_regexp = variable_base[i + 1 :]
+                var_text = t.value[2:-1]
+                if ":" in var_text:
+                    _, custom_regexp = var_text.split(":", 1)
                     try:
                         pattern = _EmbeddedArgumentParser.format_custom_regexp(
-                            f"{custom_regexp}"
+                            custom_regexp
                         )
                     except Exception:
                         log.exception(
                             f"Error formatting regexp: {custom_regexp} when matching: {name_with_variables}."
                         )
                         return False
-
                     regexp.append(f"({pattern})")
-
                 else:
                     regexp.append("(.*?)")  # default pattern
             else:
