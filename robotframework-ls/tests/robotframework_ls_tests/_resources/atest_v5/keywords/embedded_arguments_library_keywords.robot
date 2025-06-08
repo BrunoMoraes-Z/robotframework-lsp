@@ -54,22 +54,29 @@ Custom Embedded Argument Regexp
     [Documentation]    FAIL No keyword with name 'Result of a + b is fail' found.
     I execute "foo"
     I execute "bar" with "zap"
+#!  ^^^^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'I execute "bar" with "zap"' in 'embedded_args_in_lk_1'.
     Result of 1 + 1 is 2
     Result of 43 - 1 is 42
     Result of a + b is fail
-#!  ^^^^^^^^^^^^^^^^^^^^^^^ Undefined keyword: Result of a + b is fail.
 
 Custom Regexp With Curly Braces
     Today is 2011-06-21
     Today is Tuesday and tomorrow is Wednesday
+#!  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Today is Tuesday and tomorrow is Wednesday' in 'embedded_args_in_lk_1'.
     Literal { Brace
+#!  ^^^^^^^^^^^^^^^ Multiple keywords matching: 'Literal { Brace' in 'embedded_args_in_lk_1'.
     Literal } Brace
+#!  ^^^^^^^^^^^^^^^ Multiple keywords matching: 'Literal } Brace' in 'embedded_args_in_lk_1'.
 
 Custom Regexp With Escape Chars
     Custom Regexp With Escape Chars e.g. \\, \\\\ and c:\\temp\\test.txt
+#!  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With Escape Chars e.g. \\, \\\\ and c:\\temp\\test.txt' in 'embedded_args_in_lk_1'.
     Custom Regexp With \\}
+#!  ^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With \\}' in 'embedded_args_in_lk_1'.
     Custom Regexp With \\{
+#!  ^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With \\{' in 'embedded_args_in_lk_1'.
     Custom Regexp With \\{}
+#!  ^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With \\{}' in 'embedded_args_in_lk_1'.
 
 Grouping Custom Regexp
     ${matches} =    Grouping Custom Regexp(erts)
@@ -152,8 +159,11 @@ Star Args With Embedded Args Are Okay
 
 Same name with different regexp works
     It is a car
+#!  ^^^^^^^^^^^ Multiple keywords matching: 'It is a car' in 'embedded_args_in_lk_1'.
     It is a dog
+#!  ^^^^^^^^^^^ Multiple keywords matching: 'It is a dog' in 'embedded_args_in_lk_1'.
     It is a cow
+#!  ^^^^^^^^^^^ Multiple keywords matching: 'It is a cow' in 'embedded_args_in_lk_1'.
 
 Same name with different regexp matching multiple fails
     [Documentation]    FAIL
