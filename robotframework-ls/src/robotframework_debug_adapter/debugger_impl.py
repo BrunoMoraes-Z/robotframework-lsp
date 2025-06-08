@@ -614,13 +614,17 @@ Evaluation
 
             kw = Keyword(name, args=node.args, assign=assign)
             ctx = info.execution_context
-            try:
+
+            from robotframework_ls.impl.robot_version import get_robot_major_version
+
+            major = get_robot_major_version()
+            if major >= 7:
                 from robot.result import Keyword as KeywordResult  # type: ignore
-            except Exception:
-                return EvaluationResult(kw.run(ctx))
-            else:
+
                 result = KeywordResult()
                 return EvaluationResult(kw.run(result, ctx))
+            else:
+                return EvaluationResult(kw.run(ctx))
 
         raise UnableToEvaluateError("Unable to evaluate: %s" % (self.expression,))
 

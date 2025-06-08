@@ -16,6 +16,9 @@ import os.path
 from robotframework_debug_adapter_tests.fixtures import _DebuggerAPI
 import json
 import pytest
+from robotframework_ls.impl.robot_version import get_robot_major_version
+
+IS_ROBOT_7_ONWARDS = get_robot_major_version() >= 7
 
 
 def test_invalid_launch_1(debugger_api: _DebuggerAPI):
@@ -751,7 +754,10 @@ def test_evaluate(debugger_api: _DebuggerAPI):
     response = debugger_api.evaluate(
         "My Equal Redefined     2   2", frameId=json_hit.frame_id, context="repl"
     )
-    assert response.body.result == "None"
+    if IS_ROBOT_7_ONWARDS:
+        assert response.body.result == "None"
+    else:
+        assert response.body.result == "None"
 
     assert json_hit.stack_trace_response.body.stackFrames[0]["id"] == json_hit.frame_id
 
