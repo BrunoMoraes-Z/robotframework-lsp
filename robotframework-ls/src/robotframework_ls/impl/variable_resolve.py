@@ -93,6 +93,9 @@ def extract_variable_base(text: str) -> str:
     if variable_match is not None:
         base = variable_match.base
         if base is not None:
+            colon_i = base.find(":")
+            if colon_i != -1:
+                base = base[:colon_i].rstrip()
             return base
 
     if len(text) >= 3:

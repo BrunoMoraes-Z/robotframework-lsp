@@ -615,6 +615,11 @@
                     "default": "    ",
                     "description": "Defines the string used to separate arguments when applying a Keyword completion with arguments."
                 },
+                "robot.completions.dictionaryEntries.enable": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enables or disables suggestions for dictionary variable entries."
+                },
                 "robot.workspaceSymbolsOnlyForOpenDocs": {
                     "type": "boolean",
                     "default": false,

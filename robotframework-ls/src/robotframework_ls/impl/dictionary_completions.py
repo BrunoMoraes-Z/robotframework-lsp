@@ -18,7 +18,9 @@ def _iter_normalized_variables_and_values(
     completion_context: ICompletionContext,
 ) -> Iterator[Tuple[str, Tuple[str, ...]]]:
     from robot.api import Token
-    from robotframework_ls.impl.variable_resolve import robot_search_variable
+    from robotframework_ls.impl.variable_resolve import (
+        extract_variable_base,
+    )
     from robotframework_ls.impl.text_utilities import normalize_robot_name
 
     for node_info in completion_context.get_all_variables():
@@ -27,11 +29,10 @@ def _iter_normalized_variables_and_values(
         if token is None:
             continue
         var_name = token.value
-        robot_match = robot_search_variable(var_name)
-        if robot_match and robot_match.base:
-            # i.e.: Variable.value provides the values of the assign
+        base_name = extract_variable_base(var_name)
+        if base_name:
             var_value: Tuple[str, ...] = node.value
-            yield (normalize_robot_name(robot_match.base), var_value)
+            yield (normalize_robot_name(base_name), var_value)
 
 
 def _as_dictionary(
@@ -62,6 +63,7 @@ def _completion_items(
             kind=CompletionItemKind.Variable,
             text_edit=TextEdit(editor_range, key),
             insertText=key,
+            detail=value,
             documentation=value,
             insertTextFormat=InsertTextFormat.Snippet,
         ).to_dict()
@@ -82,11 +84,66 @@ def _iter_all_normalized_variables_and_values(
         yield from _iter_normalized_variables_and_values(new_ctx)
 
 
+def _resolve_dictionary_for_path(
+    normalized_variables: Dict[str, Tuple[str, ...]],
+    base_name: str,
+    path_items: List[str],
+) -> Tuple[str, ...] | None:
+    from robotframework_ls.impl.text_utilities import normalize_robot_name
+    from robotframework_ls.impl.variable_resolve import robot_search_variable
+
+    search_items = [normalize_robot_name(base_name)]
+    search_items.extend(normalize_robot_name(p) for p in path_items)
+    log.debug("resolve path %s -> %s", base_name, search_items)
+
+    count = 0
+    while search_items:
+        count += 1
+        if count > 10:
+            log.info("Breaking recursion on dot dictionary completions: %s", search_items)
+            return None
+
+        search_name = search_items.pop(0)
+        variable_values = normalized_variables.get(search_name)
+        log.debug("search %s -> %s", search_name, variable_values)
+        if not variable_values:
+            return None
+
+        if not search_items:
+            return variable_values
+
+        dictionary = _as_dictionary(variable_values, normalize=True)
+        next_search_key = search_items.pop(0)
+        next_search = dictionary.get(next_search_key)
+        if not next_search or not next_search.startswith("&{"):
+            return None
+
+        new_match = robot_search_variable(next_search)
+        if not new_match or not new_match.base:
+            return None
+
+        for item in reversed(new_match.items):
+            search_items.insert(0, normalize_robot_name(item))
+        search_items.insert(0, normalize_robot_name(new_match.base))
+
+    return None
+
+
 def complete(completion_context: ICompletionContext) -> List[CompletionItemTypedDict]:
     from robotframework_ls.impl.variable_resolve import iter_robot_variable_matches
     from robotframework_ls.impl.ast_utils import iter_robot_match_as_tokens
     from robotframework_ls.impl.text_utilities import normalize_robot_name
     from robotframework_ls.impl.variable_resolve import robot_search_variable
+    from robotframework_ls.impl.robot_generated_lsp_constants import (
+        OPTION_ROBOT_COMPLETIONS_DICTIONARY_ENTRIES_ENABLE,
+    )
+    import re
+
+    config = completion_context.config
+    if config is not None and not config.get_setting(
+        OPTION_ROBOT_COMPLETIONS_DICTIONARY_ENTRIES_ENABLE, bool, True
+    ):
+        return []
 
     token_info = completion_context.get_current_token()
     if token_info is None:
@@ -95,6 +152,51 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
     value = token.value
 
     col = completion_context.sel.col
+
+    prefix_before_col = value[: col - token.col_offset]
+    prefix = prefix_before_col
+    if prefix.endswith("}"):
+        prefix = prefix[:-1]
+
+    if prefix.startswith(("${", "@{", "&{")) and "." in prefix:
+        inside = prefix[2:]
+        parts = inside.split(".")
+        base_part = parts[0]
+        colon_i = base_part.find(":")
+        if colon_i != -1:
+            base_name = base_part[:colon_i].rstrip()
+        else:
+            base_name = base_part
+
+        path_items = parts[1:]
+        if prefix.endswith("."):
+            if path_items and path_items[-1] == "":
+                path_items = path_items[:-1]
+            filter_token = ""
+        else:
+            filter_token = normalize_robot_name(path_items[-1]) if path_items else ""
+            path_items = path_items[:-1]
+
+        start_offset = token.col_offset + len(prefix_before_col) - len(filter_token)
+        end_offset = col
+
+        normalized_vars = dict(_iter_all_normalized_variables_and_values(completion_context))
+        variable_values = _resolve_dictionary_for_path(normalized_vars, base_name, path_items)
+        if not variable_values:
+            return []
+
+        try:
+            dictionary = _as_dictionary(variable_values, filter_token=filter_token)
+        except Exception:
+            return []
+
+        log.debug("dot completion dictionary %s", dictionary)
+
+        editor_range = Range(
+            start=Position(completion_context.sel.line, start_offset),
+            end=Position(completion_context.sel.line, end_offset),
+        )
+        return _completion_items(dictionary, editor_range)
 
     last_opening_bracket_column = -1
 
