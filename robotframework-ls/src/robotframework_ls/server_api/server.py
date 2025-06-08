@@ -77,6 +77,7 @@ def complete_all(
     from robotframework_ls.impl import section_name_completions
     from robotframework_ls.impl import keyword_completions
     from robotframework_ls.impl import variable_completions
+    from robotframework_ls.impl import variable_type_completions
     from robotframework_ls.impl import dictionary_completions
     from robotframework_ls.impl import filesystem_section_completions
     from robotframework_ls.impl import keyword_parameter_completions
@@ -117,6 +118,9 @@ def complete_all(
                 )
                 ret.extend(library_names_completions.complete(completion_context))
                 return ret
+
+    if not ret:
+        ret.extend(variable_type_completions.complete(completion_context))
 
     if not ret:
         ret.extend(variable_completions.complete(completion_context))
