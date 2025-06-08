@@ -104,10 +104,10 @@ def matches_name_with_variables(name: str, name_with_variables: str) -> bool:
         regexp = []
         for t in tokenized_vars:
             if t.type == t.VARIABLE:
-                variable_base = extract_variable_base(t.value)
-                i = variable_base.find(":")
-                if i > 0:
-                    custom_regexp = variable_base[i + 1 :]
+                variable_base = t.value[2:-1]
+                colon_i = variable_base.find(":")
+                if colon_i > 0:
+                    custom_regexp = variable_base[colon_i + 1 :]
                     try:
                         pattern = _EmbeddedArgumentParser.format_custom_regexp(
                             f"{custom_regexp}"

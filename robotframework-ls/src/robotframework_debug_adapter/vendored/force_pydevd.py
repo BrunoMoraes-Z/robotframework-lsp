@@ -95,20 +95,28 @@ import pydevd  # noqa
 
 log.info("Vendored root: %s\npydevd: %s", VENDORED_ROOT, pydevd)
 
-# Ensure that pydevd uses JSON protocol by default.
-from _pydevd_bundle import pydevd_constants
-from _pydevd_bundle import pydevd_defaults
+# Ensure that pydevd uses JSON protocol by default when available.
+try:
+    from _pydevd_bundle import pydevd_constants
+    from _pydevd_bundle import pydevd_defaults
 
-pydevd_defaults.PydevdCustomization.DEFAULT_PROTOCOL = (
-    pydevd_constants.HTTP_JSON_PROTOCOL
-)
+    pydevd_defaults.PydevdCustomization.DEFAULT_PROTOCOL = (
+        pydevd_constants.HTTP_JSON_PROTOCOL
+    )
+except Exception:
+    log.debug("pydevd_defaults not available; skipping DEFAULT_PROTOCOL setup.")
 
 
 from robocorp_ls_core.debug_adapter_core.dap.dap_base_schema import (
     BaseSchema as RobotSchema,
 )
-from _pydevd_bundle._debug_adapter.pydevd_base_schema import BaseSchema as PyDevdSchema
-
-PyDevdSchema._obj_id_to_dap_id = RobotSchema._obj_id_to_dap_id
-PyDevdSchema._dap_id_to_obj_id = RobotSchema._dap_id_to_obj_id
-PyDevdSchema._next_dap_id = RobotSchema._next_dap_id
+try:
+    from _pydevd_bundle._debug_adapter.pydevd_base_schema import (
+        BaseSchema as PyDevdSchema,
+    )
+except Exception:
+    PyDevdSchema = None
+else:
+    PyDevdSchema._obj_id_to_dap_id = RobotSchema._obj_id_to_dap_id
+    PyDevdSchema._dap_id_to_obj_id = RobotSchema._dap_id_to_obj_id
+    PyDevdSchema._next_dap_id = RobotSchema._next_dap_id
