@@ -616,11 +616,17 @@ Evaluation
             ctx = info.execution_context
             try:
                 from robot.result import Keyword as KeywordResult  # type: ignore
+                import inspect
+
+                sig = inspect.signature(kw.run)
+                params = list(sig.parameters)
+                if len(params) >= 3:  # expects 'result' and 'context'
+                    result = KeywordResult()
+                    return EvaluationResult(kw.run(result, ctx))
+                else:
+                    return EvaluationResult(kw.run(ctx))
             except Exception:
                 return EvaluationResult(kw.run(ctx))
-            else:
-                result = KeywordResult()
-                return EvaluationResult(kw.run(result, ctx))
 
         raise UnableToEvaluateError("Unable to evaluate: %s" % (self.expression,))
 

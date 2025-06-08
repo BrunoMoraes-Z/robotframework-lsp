@@ -94,7 +94,10 @@ def matches_name_with_variables(name: str, name_with_variables: str) -> bool:
     """
 
     from robotframework_ls.impl import ast_utils
-    from robotframework_ls.impl.variable_resolve import extract_variable_base
+    from robotframework_ls.impl.variable_resolve import (
+        extract_variable_base,
+        robot_search_variable,
+    )
 
     try:
         tokenized_vars = ast_utils.tokenize_variables_from_name(name_with_variables)
@@ -104,7 +107,15 @@ def matches_name_with_variables(name: str, name_with_variables: str) -> bool:
         regexp = []
         for t in tokenized_vars:
             if t.type == t.VARIABLE:
-                variable_base = extract_variable_base(t.value)
+                # Preserve custom regexp information provided after ':' in the
+                # variable name. extract_variable_base() would strip it, so use
+                # the robot_search_variable result instead when available.
+                robot_match = robot_search_variable(t.value)
+                if robot_match and robot_match.base:
+                    variable_base = robot_match.base
+                else:
+                    variable_base = t.value[2:-1]
+
                 i = variable_base.find(":")
                 if i > 0:
                     custom_regexp = variable_base[i + 1 :]
