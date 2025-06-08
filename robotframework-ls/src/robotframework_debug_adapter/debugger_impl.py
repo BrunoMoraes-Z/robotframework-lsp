@@ -619,12 +619,11 @@ Evaluation
                 import inspect
 
                 sig = inspect.signature(kw.run)
-                params = list(sig.parameters)
-                if len(params) >= 3:  # expects 'result' and 'context'
+                params = sig.parameters
+                if 'result' in params:
                     result = KeywordResult()
                     return EvaluationResult(kw.run(result, ctx))
-                else:
-                    return EvaluationResult(kw.run(ctx))
+                return EvaluationResult(kw.run(ctx))
             except Exception:
                 return EvaluationResult(kw.run(ctx))
 
