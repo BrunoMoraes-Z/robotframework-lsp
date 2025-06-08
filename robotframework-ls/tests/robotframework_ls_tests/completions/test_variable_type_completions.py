@@ -20,6 +20,24 @@ def test_type_completion_after_colon(workspace, libspec_manager):
     )
     labels = _get_completion_labels(completions)
     assert "str" in labels
+    assert "datetime" in labels
     assert "MyVars" not in labels
+
+
+def test_type_completion_disabled_for_old_version(workspace, libspec_manager, monkeypatch):
+    from robotframework_ls.impl import robot_version
+
+    monkeypatch.setattr(robot_version, "get_robot_major_minor_version", lambda: (7, 2))
+
+    workspace.set_root("case_vars_file", libspec_manager=libspec_manager)
+    doc, selected = workspace.put_doc_get_line_col(
+        "typed.robot",
+        "*** Test Cases ***\nTest\n    ${var: |}\n",
+    )
+    line, col = selected.get_end_line_col()
+    completions = complete_all(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+    assert completions == []
 
 
