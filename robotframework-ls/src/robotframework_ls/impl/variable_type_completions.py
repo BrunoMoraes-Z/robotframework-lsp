@@ -64,8 +64,12 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
             kind=CompletionItemKind.Class,
             text_edit=TextEdit(
                 Range(
-                    start=Position(completion_context.sel.line, completion_context.sel.col),
-                    end=Position(completion_context.sel.line, completion_context.sel.col),
+                    start=Position(
+                        completion_context.sel.line, completion_context.sel.col
+                    ),
+                    end=Position(
+                        completion_context.sel.line, completion_context.sel.col
+                    ),
                 ),
                 name,
             ),

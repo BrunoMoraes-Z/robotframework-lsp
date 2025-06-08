@@ -100,7 +100,9 @@ def _resolve_dictionary_for_path(
     while search_items:
         count += 1
         if count > 10:
-            log.info("Breaking recursion on dot dictionary completions: %s", search_items)
+            log.info(
+                "Breaking recursion on dot dictionary completions: %s", search_items
+            )
             return None
 
         search_name = search_items.pop(0)
@@ -180,8 +182,12 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
         start_offset = token.col_offset + len(prefix_before_col) - len(filter_token)
         end_offset = col
 
-        normalized_vars = dict(_iter_all_normalized_variables_and_values(completion_context))
-        variable_values = _resolve_dictionary_for_path(normalized_vars, base_name, path_items)
+        normalized_vars = dict(
+            _iter_all_normalized_variables_and_values(completion_context)
+        )
+        variable_values = _resolve_dictionary_for_path(
+            normalized_vars, base_name, path_items
+        )
         if not variable_values:
             return []
 

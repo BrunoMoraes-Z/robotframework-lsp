@@ -315,7 +315,6 @@ def _tokenize_token(
             )
         use_token = token_keyword
 
-
     try:
         iter_in = _tokenize_variables(use_token)
     except:
