@@ -188,3 +188,97 @@ Dictionary Variable
     )
     # ie.: empty (just checking that it doesn't crash).
     data_regression.check(completions)
+
+
+def test_dictionary_entries_dot_completion(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+    from .test_variable_type_completions import _get_completion_labels
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """
+*** Variables ***
+&{acessos}    usuario=teste    senha=123
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${acessos.}"""
+    line, col = doc.get_last_line_col()
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+    labels = _get_completion_labels(completions)
+    assert {"usuario", "senha"} == labels
+
+
+def test_dictionary_entries_dot_completion_typed(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+    from .test_variable_type_completions import _get_completion_labels
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """
+*** Variables ***
+${acessos: dict}    usuario=teste    senha=123
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${acessos.}"""
+    line, col = doc.get_last_line_col()
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+    labels = _get_completion_labels(completions)
+    assert {"usuario", "senha"} == labels
+
+
+def test_dictionary_entries_dot_completion_recursive(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+    from .test_variable_type_completions import _get_completion_labels
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """
+*** Variables ***
+&{Person}         Address=&{home_address}
+&{home_address}   City=&{Finnland}[Cities]   Zip Code=12345
+&{Finnland}       Cities=&{kaupungeista}
+&{kaupungeista}   Home of Aalto University=Espoo
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${Person.Address.City.}"""
+    line, col = doc.get_last_line_col()
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+    labels = _get_completion_labels(completions)
+    assert {"Home of Aalto University"} == labels
+
+
+def test_dictionary_entries_completion_disabled(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+    from robotframework_ls.robot_config import RobotConfig
+    from robotframework_ls.impl.robot_generated_lsp_constants import (
+        OPTION_ROBOT_COMPLETIONS_DICTIONARY_ENTRIES_ENABLE,
+    )
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """*** Variables ***
+&{acessos}    usuario=teste    senha=123
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${acessos.}"""
+    line, col = doc.get_last_line_col()
+    config = RobotConfig()
+    config.update({OPTION_ROBOT_COMPLETIONS_DICTIONARY_ENTRIES_ENABLE: False})
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col, config=config)
+    )
+    assert completions == []

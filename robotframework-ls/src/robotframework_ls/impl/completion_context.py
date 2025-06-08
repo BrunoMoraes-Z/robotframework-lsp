@@ -347,11 +347,15 @@ class CompletionContext(object):
             base_token = ast_utils.convert_variable_match_base_to_token(
                 token, variable_match
             )
-            ret[normalize_robot_name(variable_match.base)] = VariableFoundFromToken(
+            base_name = variable_match.base
+            colon_i = base_name.find(":")
+            if colon_i != -1:
+                base_name = base_name[:colon_i].rstrip()
+            ret[normalize_robot_name(base_name)] = VariableFoundFromToken(
                 self,
                 base_token,
                 variable_node.value,
-                variable_name=variable_match.base,
+                variable_name=base_name,
                 stack=variable_node_info.stack,
             )
 
