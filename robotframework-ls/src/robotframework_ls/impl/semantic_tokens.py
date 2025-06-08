@@ -293,7 +293,7 @@ def _tokenize_token(
     if use_token.type != use_token_type:
         use_token = copy_token_replacing(use_token, type=use_token_type)
 
-    if use_token_type == KEYWORD:
+    if use_token_type in (KEYWORD, ERROR):
         token_keyword = use_token
 
         token_gherkin_prefix, token_keyword = _extract_gherkin_token_from_keyword(
@@ -313,8 +313,42 @@ def _tokenize_token(
                 token_library_prefix,
                 scope.get_index_from_internal_token_type(token_library_prefix.type),
             )
-
         use_token = token_keyword
+
+        text = use_token.value.lstrip()
+        upper = text.upper()
+        if upper.startswith("GROUP"):
+            idx = use_token.value.upper().find("GROUP") + len("GROUP")
+            control_tok, remainder = split_token_change_first(
+                use_token, "control", idx
+            )
+            yield control_tok, CONTROL_INDEX
+            remainder_val = remainder.value.lstrip()
+            if remainder_val:
+                delta = len(remainder.value) - len(remainder_val)
+                if delta:
+                    _, remainder = split_token_change_first(remainder, remainder.type, delta)
+                for tok in _tokenize_variables(remainder):
+                    token_type_index = scope.get_index_from_rf_token_type(tok.type)
+                    if token_type_index is not None:
+                        yield tok, token_type_index
+            return
+        elif upper.startswith("VAR"):
+            idx = use_token.value.upper().find("VAR") + len("VAR")
+            control_tok, remainder = split_token_change_first(
+                use_token, "control", idx
+            )
+            yield control_tok, CONTROL_INDEX
+            remainder_val = remainder.value.lstrip()
+            if remainder_val:
+                delta = len(remainder.value) - len(remainder_val)
+                if delta:
+                    _, remainder = split_token_change_first(remainder, remainder.type, delta)
+                for tok in _tokenize_variables(remainder):
+                    token_type_index = scope.get_index_from_rf_token_type(tok.type)
+                    if token_type_index is not None:
+                        yield tok, token_type_index
+            return
 
     try:
         iter_in = _tokenize_variables(use_token)
