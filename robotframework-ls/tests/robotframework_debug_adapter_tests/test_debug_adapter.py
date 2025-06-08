@@ -728,6 +728,10 @@ def test_launch_in_external_terminal(debugger_api: _DebuggerAPI):
     debugger_api.read(TerminatedEvent)
 
 
+import sys
+
+
+@pytest.mark.skipif(sys.version_info >= (3, 12), reason="pydevd not stable on Python 3.12")
 def test_evaluate(debugger_api: _DebuggerAPI):
     from robocorp_ls_core.debug_adapter_core.dap.dap_schema import TerminatedEvent
 
@@ -789,6 +793,7 @@ def test_evaluate(debugger_api: _DebuggerAPI):
     debugger_api.continue_event(json_hit.thread_id, accept_terminated=True)
 
 
+@pytest.mark.skipif(sys.version_info >= (3, 12), reason="pydevd not stable on Python 3.12")
 def test_evaluate_assign(debugger_api: _DebuggerAPI):
     from robocorp_ls_core.debug_adapter_core.dap.dap_schema import TerminatedEvent
 
