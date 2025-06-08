@@ -65,6 +65,22 @@ def test_matches_name_with_variables_with_custom_regexp():
     )
 
 
+def test_matches_name_with_variables_default_pattern():
+    from robotframework_ls.impl.text_utilities import matches_name_with_variables
+    from robotframework_ls.impl.text_utilities import normalize_robot_name
+
+    keyword_name_call_text = "Hello there"
+    keyword_name = "Hello ${who}"
+    assert matches_name_with_variables(
+        normalize_robot_name(keyword_name_call_text), normalize_robot_name(keyword_name)
+    )
+
+    keyword_name_call_text = "Hi there"
+    assert not matches_name_with_variables(
+        normalize_robot_name(keyword_name_call_text), normalize_robot_name(keyword_name)
+    )
+
+
 def test_iter_dotted_names():
     from robotframework_ls.impl.text_utilities import iter_dotted_names
 
