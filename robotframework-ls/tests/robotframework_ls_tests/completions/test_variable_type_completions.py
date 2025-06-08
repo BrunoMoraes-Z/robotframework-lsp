@@ -20,6 +20,6 @@ def test_type_completion_after_colon(workspace, libspec_manager):
     )
     labels = _get_completion_labels(completions)
     assert "str" in labels
-    assert "MyVars" in labels
+    assert "MyVars" not in labels
 
 

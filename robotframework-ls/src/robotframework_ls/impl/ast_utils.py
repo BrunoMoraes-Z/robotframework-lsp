@@ -1753,9 +1753,13 @@ def convert_variable_match_base_to_token(
     else:
         base_i = s.find(base)
 
+    colon_i = base.find(":")
+    if colon_i != -1:
+        base = base[:colon_i].rstrip()
+
     return Token(
         type=token.type,
-        value=variable_match.base,
+        value=base,
         lineno=token.lineno,
         col_offset=token.col_offset + variable_match.start + base_i,
         error=token.error,

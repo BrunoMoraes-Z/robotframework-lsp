@@ -163,6 +163,10 @@ def _collect_variables_from_set_keywords(
                     var_name = var_name[1:-1]
                     start_offset += 1
 
+                colon_i = var_name.find(":")
+                if colon_i != -1:
+                    var_name = var_name[:colon_i].rstrip()
+
                 if env_vars or collector.accepts(var_name):
                     base_token = ast_utils.copy_token_replacing(
                         var_name_tok, col_offset=start_offset, value=var_name
@@ -518,6 +522,10 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
     var_token_info = completion_context.get_current_variable()
     if var_token_info is not None:
         value = var_token_info.token.value
+        value_for_match = value
+        colon_i = value.find(":")
+        if colon_i != -1:
+            value_for_match = value[:colon_i].rstrip()
         in_assign = var_token_info.token.type == var_token_info.token.ASSIGN
 
         in_expression = (
@@ -526,7 +534,7 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
         collector = _Collector(
             completion_context.sel,
             in_expression,
-            [(var_token_info.token, RobotStringMatcher(value))],
+            [(var_token_info.token, RobotStringMatcher(value_for_match))],
             in_assign,
             add_prefix=None,
         )
