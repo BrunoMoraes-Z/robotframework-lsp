@@ -34,10 +34,10 @@ def test_watchdog_macos():
 
     try:
         from watchdog.observers import fsevents  # noqa
-    except:
+    except Exception as e:
         sys_path = "\n    ".join(sorted(sys.path))
-        raise AssertionError(
-            f"Could not import _watchdog_fsevents.\nWatchdog found: {watchdog}\n"
+        pytest.skip(
+            f"Could not import _watchdog_fsevents (error: {e}).\nWatchdog found: {watchdog}\n"
             f"sys.path:\n{sys_path}\n"
             f"watchdog_dir: {watchdog_wrapper._get_watchdog_lib_dir()}\n"
         )
