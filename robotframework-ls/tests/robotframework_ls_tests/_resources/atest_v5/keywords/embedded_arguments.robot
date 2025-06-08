@@ -77,22 +77,29 @@ Custom Embedded Argument Regexp
     [Documentation]    FAIL No keyword with name 'Result of a + b is fail' found.
     I execute "foo"
     I execute "bar" with "zap"
+#!  ^^^^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'I execute "bar" with "zap"' in current file.
     Result of 1 + 1 is 2
     Result of 43 - 1 is 42
     Result of a + b is fail
-#!  ^^^^^^^^^^^^^^^^^^^^^^^ Undefined keyword: Result of a + b is fail.
 
 Custom Regexp With Curly Braces
     Today is 2011-06-21
     Today is Tuesday and tomorrow is Wednesday
+#!  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Today is Tuesday and tomorrow is Wednesday' in current file.
     Literal { Brace
+#!  ^^^^^^^^^^^^^^^ Multiple keywords matching: 'Literal { Brace' in current file.
     Literal } Brace
+#!  ^^^^^^^^^^^^^^^ Multiple keywords matching: 'Literal } Brace' in current file.
 
 Custom Regexp With Escape Chars
     Custom Regexp With Escape Chars e.g. \\, \\\\ and c:\\temp\\test.txt
+#!  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With Escape Chars e.g. \\, \\\\ and c:\\temp\\test.txt' in current file.
     Custom Regexp With \\}
+#!  ^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With \\}' in current file.
     Custom Regexp With \\{
+#!  ^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With \\{' in current file.
     Custom Regexp With \\{}
+#!  ^^^^^^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'Custom Regexp With \\{}' in current file.
 
 Grouping Custom Regexp
     ${matches} =    Grouping Custom Regexp(erts)
@@ -211,8 +218,11 @@ Keyword Matching Multiple Keywords In One And Different Resource Files
 
 Same name with different regexp works
     It is a car
+#!  ^^^^^^^^^^^ Multiple keywords matching: 'It is a car' in current file.
     It is a dog
+#!  ^^^^^^^^^^^ Multiple keywords matching: 'It is a dog' in current file.
     It is a cow
+#!  ^^^^^^^^^^^ Multiple keywords matching: 'It is a cow' in current file.
 
 Same name with different regexp matching multiple fails
     [Documentation]    FAIL
@@ -228,6 +238,7 @@ Same name with same regexp fails
     ...    ${INDENT}It is totally \${same}
     ...    ${INDENT}It is totally \${same}
     It is totally same
+#!  ^^^^^^^^^^^^^^^^^^ Multiple keywords matching: 'It is totally same' in current file.
 
 *** Keywords ***
 User ${user} Selects ${item} From Webshop
