@@ -24,7 +24,7 @@ def collect_children(ast) -> List[DocumentSymbolTypedDict]:
             }
             ret.append(doc_symbol)
 
-        elif classname == "TestCase":
+        elif classname in ("TestCase", "Task"):
             token = node.header.get_token(Token.TESTCASE_NAME)
             symbol_range = create_range_from_token(token)
             doc_symbol = {
