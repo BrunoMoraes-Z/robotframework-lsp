@@ -577,10 +577,12 @@ class _EvaluationInfo(object):
         if self.context == "hover":
             try:
                 ctx = info.execution_context
-                return EvaluationResult(
-                    ctx.namespace.get_runner(self.expression).longname
-                )
-            except:
+                runner = ctx.namespace.get_runner(self.expression)
+                longname = getattr(runner, "longname", None)
+                if longname is None:
+                    longname = getattr(runner, "name", "")
+                return EvaluationResult(longname)
+            except Exception:
                 log.exception("Error on hover evaluation: %s", self.expression)
                 return EvaluationResult("")
 
@@ -1088,8 +1090,9 @@ class _RobotDebuggerImpl(object):
                 if not source:
                     source = self._source_as_str(entry.source)
                 if lineno is None:
-                    lineno = entry.lineno
-                break
+                    lineno = getattr(entry, "lineno", None)
+                if source and lineno is not None:
+                    break
 
         self._stack_ctx_entries_deque.append(
             _StepEntry(
