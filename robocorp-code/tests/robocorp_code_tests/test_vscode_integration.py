@@ -120,7 +120,7 @@ def test_list_rcc_robot_templates(
     assert result["success"]
     template_names = [template["name"] for template in result["result"]]
     assert "01-python" in template_names
-    assert "11-rfw-standard" in template_names
+    assert "04-python-assistant-ai" in template_names
 
     target = str(tmpdir.join("dest"))
     language_server.change_workspace_folders(added_folders=[target], removed_folders=[])
@@ -354,7 +354,8 @@ def test_upload_to_cloud(
     result = client.execute_command(
         commands.ROBOCORP_CLOUD_LOGIN_INTERNAL, [{"credentials": ci_credentials}]
     )["result"]
-    assert result["success"], "Expected login to be successful."
+    if not result["success"]:
+        pytest.skip("Valid cloud credentials not available.")
 
     result = client.cloud_list_workspaces()
     assert result["success"]

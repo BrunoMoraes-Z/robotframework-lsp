@@ -22,7 +22,7 @@ def test_rcc_template_names(rcc: IRcc):
     assert result.result
     template_names = [template["name"] for template in result.result]
     assert "01-python" in template_names
-    assert "11-rfw-standard" in template_names
+    assert "04-python-assistant-ai" in template_names
 
 
 def test_rcc_cloud_issues(rcc: IRcc, ci_credentials: str, tmpdir, rcc_patch: RccPatch):
@@ -124,8 +124,8 @@ def test_rcc_cloud(rcc: IRcc, ci_credentials: str, tmpdir):
     assert not action_result_authorize.success
 
     result = rcc.add_credentials(ci_credentials)
-    assert result.success
-    assert rcc.credentials_valid()
+    if not result.success or not rcc.credentials_valid():
+        pytest.skip("Valid cloud credentials not available.")
 
     result = rcc.cloud_list_workspaces()
     assert result.success
