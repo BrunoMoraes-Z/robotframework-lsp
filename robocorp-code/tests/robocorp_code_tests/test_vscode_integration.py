@@ -120,7 +120,7 @@ def test_list_rcc_robot_templates(
     assert result["success"]
     template_names = [template["name"] for template in result["result"]]
     assert "01-python" in template_names
-    assert "11-rfw-standard" in template_names
+    assert "04-python-assistant-ai" in template_names
 
     target = str(tmpdir.join("dest"))
     language_server.change_workspace_folders(added_folders=[target], removed_folders=[])

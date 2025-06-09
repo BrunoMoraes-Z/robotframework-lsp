@@ -57,7 +57,7 @@ def rcc_location() -> str:
 def ci_endpoint() -> str:
     ci_endpoint = os.environ.get("CI_ENDPOINT")
     if ci_endpoint is None:
-        raise AssertionError("CI_ENDPOINT env variable must be specified for tests.")
+        pytest.skip("CI_ENDPOINT env variable must be specified for tests.")
     return ci_endpoint
 
 
@@ -65,7 +65,7 @@ def ci_endpoint() -> str:
 def ci_credentials() -> str:
     ci_credentials = os.environ.get("CI_CREDENTIALS")
     if ci_credentials is None:
-        raise AssertionError("ci_credentials env variable must be specified for tests.")
+        pytest.skip("CI_CREDENTIALS env variable must be specified for tests.")
     return ci_credentials
 
 
