@@ -711,6 +711,10 @@ class _RobotDebuggerImpl(object):
         return self._reason
 
     @property
+    def is_paused(self) -> bool:
+        return self._run_state == STATE_PAUSED
+
+    @property
     def exc_name(self) -> Optional[str]:
         return self._exc_name
 

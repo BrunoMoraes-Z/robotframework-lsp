@@ -48,6 +48,10 @@ class IBusyWait(Protocol):
 class IRobotDebugger(Protocol):
     busy_wait: IBusyWait
 
+    def is_paused(self) -> bool:
+        """Returns True if the debugger is currently paused."""
+        pass
+
     def reset(self):
         pass
 

@@ -542,14 +542,22 @@ class _RobotTargetComm(threading.Thread):
         expression = arguments.expression
         context = arguments.context
         if self._debugger_impl and self._run_in_debug_mode:
-            eval_info = self._debugger_impl.evaluate(frame_id, expression, context)
-            try:
-                result = eval_info.future.result()
-            except Exception as e:
-                err = "".join(traceback.format_exception_only(type(e), e))
-                response = self._evaluate_response(request, err, error_message=err)
+            if not self._debugger_impl.is_paused:
+                get_log().info("Unable to evaluate (debugger not paused).")
+                response = self._evaluate_response(
+                    request,
+                    "",
+                    error_message="Unable to evaluate: debugger not paused.",
+                )
             else:
-                response = self._evaluate_response(request, str(result))
+                eval_info = self._debugger_impl.evaluate(frame_id, expression, context)
+                try:
+                    result = eval_info.future.result()
+                except Exception as e:
+                    err = "".join(traceback.format_exception_only(type(e), e))
+                    response = self._evaluate_response(request, err, error_message=err)
+                else:
+                    response = self._evaluate_response(request, str(result))
         else:
             get_log().info("Unable to evaluate (no debug mode).")
             response = self._evaluate_response(request, "")
