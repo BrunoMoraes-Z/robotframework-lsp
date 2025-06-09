@@ -358,6 +358,10 @@ async function registerLanguageServerListeners(langServer: LanguageClient) {
             // which case the progress won't be shown on some cases where it should be shown.
             extensionContext.subscriptions.push(
                 langServer.onNotification("$/customProgress", (args: ProgressReport) => {
+                    if (!args || typeof args.kind !== "string") {
+                        logError("Received invalid progress report.", args, "EXT_INVALID_PROGRESS");
+                        return;
+                    }
                     // OUTPUT_CHANNEL.appendLine(args.id + " - " + args.kind + " - " + args.title + " - " + args.message + " - " + args.increment);
                     let progressReporter = handleProgressMessage(args);
                     if (progressReporter) {
@@ -514,8 +518,22 @@ async function restartLanguageServer() {
                         );
                     } catch (err) {
                         logError("Error restarting language server.", err, "EXT_RESTART_ROBOT_LS");
-                        // If it fails once it'll never work again -- it seems it caches our failure :(
-                        // See: https://github.com/microsoft/vscode-languageserver-node/issues/872
+                        // If it fails once it'll never work again because VS Code caches the failure.
+                        // Try a full restart clearing the caches as a fallback before asking the user
+                        // to reload the window.
+                        try {
+                            OUTPUT_CHANNEL.appendLine("Retrying language server restart after clearing caches.");
+                            const ok = await clearCachesAndRestartProcessesStart();
+                            if (ok) {
+                                await clearCachesAndRestartProcessesFinish();
+                                window.showInformationMessage("Robot Framework Language Server reloaded with new settings.");
+                                return;
+                            }
+                        } catch (err2) {
+                            logError("Error restarting language server after clearing caches.", err2, "EXT_RESTART_ROBOT_LS_CLEAR_CACHE");
+                        }
+
+                        // If it still fails, ask the user to reload the window.
                         window
                             .showWarningMessage(
                                 'There was an error reloading the Robot Framework Language Server. Please use the "Reload Window" action to apply the new settings.',
