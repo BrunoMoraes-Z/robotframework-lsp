@@ -73,6 +73,8 @@ class RemoteFSObserver(object):
         self._backend = backend
         self._extensions = extensions
         self._initialized_event = threading.Event()
+        self._log_file: Optional[str] = None
+        self._verbose: Optional[int] = None
 
     def _next_id(self) -> str:
         return f"{os.getpid()} - {self._counter()} - {random.random()}"
@@ -86,6 +88,8 @@ class RemoteFSObserver(object):
             from another observer through connect_to_server).
         """
         assert self.port is None, "RemoteFSObserver already initialized."
+        self._log_file = log_file
+        self._verbose = verbose
         import subprocess
         from robocorp_ls_core import remote_fs_observer__main__
 
@@ -226,10 +230,21 @@ class RemoteFSObserver(object):
         self.reader = r
 
         self.reader_thread = threading.Thread(
-            target=self.reader.listen, args=(self._on_read,)
+            target=self._listen_and_handle_close, args=()
         )
         self.reader_thread.daemon = True
         self.reader_thread.start()
+
+    def _listen_and_handle_close(self):
+        try:
+            assert self.reader is not None
+            self.reader.listen(self._on_read)
+        finally:
+            log.info("Remote FS observer connection closed.")
+            try:
+                self.dispose()
+            except Exception:
+                log.exception("Error disposing RemoteFSObserver on close.")
 
     def dispose(self):
         s = self._socket
