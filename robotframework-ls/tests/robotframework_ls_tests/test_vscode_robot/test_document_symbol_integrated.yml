@@ -1,5 +1,6 @@
 - children:
-  - kind: 5
+  - children: []
+    kind: 5
     name: Log It
     range:
       end:
@@ -15,7 +16,8 @@
       start:
         character: 0
         line: 2
-  - kind: 5
+  - children: []
+    kind: 5
     name: Log It2
     range:
       end:
