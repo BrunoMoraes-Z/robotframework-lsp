@@ -1,5 +1,7 @@
 import pytest
 
+from robotframework_ls.impl.robot_version import robot_version_supports_variable_types
+
 from robotframework_ls.impl.completion_context import CompletionContext
 from robotframework_ls.server_api.server import complete_all
 
@@ -8,6 +10,10 @@ def _get_completion_labels(completions):
     return {c["label"] for c in completions}
 
 
+@pytest.mark.skipif(
+    not robot_version_supports_variable_types(),
+    reason="Test requires RF typed variable support.",
+)
 def test_type_completion_after_colon(workspace, libspec_manager):
     workspace.set_root("case_vars_file", libspec_manager=libspec_manager)
     doc, selected = workspace.put_doc_get_line_col(
