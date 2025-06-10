@@ -41,9 +41,12 @@ class _RemoteFSWatch(object):
             self.remote_fs_observer = None
             writer = remote_fs_observer.writer
             if writer is not None:
-                writer.write(
-                    {"command": "stop_tracking", "on_change_id": self.on_change_id}
-                )
+                try:
+                    writer.write(
+                        {"command": "stop_tracking", "on_change_id": self.on_change_id}
+                    )
+                except Exception:
+                    log.exception("Failed to send stop_tracking to remote observer.")
 
             # Also remove from the parent.
             remote_fs_observer._change_id_to_fs_watch.pop(self.on_change_id, None)
