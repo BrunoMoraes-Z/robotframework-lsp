@@ -359,7 +359,11 @@ async function registerLanguageServerListeners(langServer: LanguageClient) {
             extensionContext.subscriptions.push(
                 langServer.onNotification("$/customProgress", (args: ProgressReport) => {
                     if (!args || typeof args.kind !== "string") {
-                        logError("Received invalid progress report.", args, "EXT_INVALID_PROGRESS");
+                        logError(
+                            "Received invalid progress report: " + JSON.stringify(args),
+                            new Error("Invalid progress report"),
+                            "EXT_INVALID_PROGRESS"
+                        );
                         return;
                     }
                     // OUTPUT_CHANNEL.appendLine(args.id + " - " + args.kind + " - " + args.title + " - " + args.message + " - " + args.increment);
