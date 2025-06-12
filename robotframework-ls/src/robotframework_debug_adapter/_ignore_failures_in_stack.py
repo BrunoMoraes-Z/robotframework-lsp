@@ -1,4 +1,5 @@
 from typing import Set, Optional
+from contextlib import contextmanager
 import os
 from robocorp_ls_core.robotframework_log import get_logger
 from robotframework_ls.impl.text_utilities import normalize_robot_name
@@ -40,6 +41,7 @@ class IgnoreFailuresInStack:
 
         self._stack: "Deque[str]" = deque()
         self.ignore_failures_inside: Set[str] = set()
+        self._ignore_all_stack = 0
 
         # Add default excludes.
         for entry in (
@@ -80,6 +82,9 @@ class IgnoreFailuresInStack:
     def ignore(self) -> bool:
         from types import FrameType
 
+        if self._ignore_all_stack:
+            return True
+
         for name in self._stack:
             normalized = normalize_robot_name(name)
             if normalized in self.ignore_failures_inside:
@@ -108,3 +113,12 @@ class IgnoreFailuresInStack:
             self._stack.pop()
         except:
             log.exception("Error in IgnoreFailuresInStack.pop()")
+
+    @contextmanager
+    def ignoring_all_failures(self):
+        """Context where all failures should be ignored."""
+        self._ignore_all_stack += 1
+        try:
+            yield
+        finally:
+            self._ignore_all_stack -= 1

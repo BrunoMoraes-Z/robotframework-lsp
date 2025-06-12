@@ -634,8 +634,12 @@ Evaluation
         """
         :param _RobotDebuggerImpl debugger_impl:
         """
+        from robotframework_debug_adapter.events_listener import _get_events_state
+
+        events_state = _get_events_state()
         try:
-            r = self._do_eval(debugger_impl)
+            with debugger_impl._ignore_failures_in_stack.ignoring_all_failures(), events_state._ignore_failures_in_stack.ignoring_all_failures():
+                r = self._do_eval(debugger_impl)
             self.future.set_result(r.result)
         except Exception as e:
             if get_log_level() >= 2:
