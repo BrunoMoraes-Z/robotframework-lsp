@@ -192,7 +192,7 @@ class RobotDebugConfigurationProvider implements DebugConfigurationProvider {
         const terminal = debugConfiguration.terminal;
         if (terminal === "integrated") {
             if (!debugConfiguration.internalConsoleOptions) {
-                debugConfiguration.internalConsoleOptions = "neverOpen";
+                debugConfiguration.internalConsoleOptions = "openOnSessionStart";
             }
         }
         return debugConfiguration;

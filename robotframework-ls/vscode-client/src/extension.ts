@@ -52,6 +52,39 @@ interface ExecuteWorkspaceCommandArgs {
     arguments: any;
 }
 
+function setupDebugConsoleFocus(context: ExtensionContext) {
+    function focusDebugConsole() {
+        commands
+            .executeCommand("workbench.debug.action.focusRepl")
+            .then(
+                undefined,
+                (err) => {
+                    logError(
+                        "Error focusing debug console.",
+                        err,
+                        "EXT_FOCUS_REPL"
+                    );
+                }
+            );
+    }
+
+    if (vscode.debug.activeDebugSession) {
+        focusDebugConsole();
+    }
+    context.subscriptions.push(
+        vscode.debug.onDidStartDebugSession(() => {
+            focusDebugConsole();
+        })
+    );
+    context.subscriptions.push(
+        vscode.debug.onDidChangeActiveDebugSession((session) => {
+            if (session) {
+                focusDebugConsole();
+            }
+        })
+    );
+}
+
 function createClientOptions(initializationOptions: object): LanguageClientOptions {
     const clientOptions: LanguageClientOptions = {
         documentSelector: ["robotframework"],
@@ -881,6 +914,7 @@ export async function activate(context: ExtensionContext) {
         await registerRunCommands(context);
         await registerLinkProviders(context);
         await registerInteractiveCommands(context);
+        setupDebugConsoleFocus(context);
 
         try {
             // Note: assign to module variable.
