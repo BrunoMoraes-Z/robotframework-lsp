@@ -54,18 +54,14 @@ interface ExecuteWorkspaceCommandArgs {
 
 function setupDebugConsoleFocus(context: ExtensionContext) {
     function focusDebugConsole() {
-        commands
-            .executeCommand("workbench.debug.action.focusRepl")
-            .then(
-                undefined,
-                (err) => {
-                    logError(
-                        "Error focusing debug console.",
-                        err,
-                        "EXT_FOCUS_REPL"
-                    );
-                }
-            );
+        // When restarting a debug session VS Code may still be creating the
+        // console, so focus after a short delay to ensure the command applies
+        // to the new session.
+        setTimeout(() => {
+            commands.executeCommand("workbench.debug.action.focusRepl").then(undefined, (err) => {
+                logError("Error focusing debug console.", err, "EXT_FOCUS_REPL");
+            });
+        }, 200);
     }
 
     if (vscode.debug.activeDebugSession) {
@@ -74,14 +70,14 @@ function setupDebugConsoleFocus(context: ExtensionContext) {
     context.subscriptions.push(
         vscode.debug.onDidStartDebugSession(() => {
             focusDebugConsole();
-        })
+        }),
     );
     context.subscriptions.push(
         vscode.debug.onDidChangeActiveDebugSession((session) => {
             if (session) {
                 focusDebugConsole();
             }
-        })
+        }),
     );
 }
 
@@ -123,7 +119,7 @@ async function getDefaultLanguageServerPythonExecutable(): Promise<ExecutableAnd
     OUTPUT_CHANNEL.appendLine("Getting language server Python executable.");
     const languageServerPython: string = getStrFromConfigExpandingVars(
         workspace.getConfiguration("robot"),
-        "language-server.python"
+        "language-server.python",
     );
 
     if (languageServerPython) {
@@ -145,12 +141,12 @@ async function getDefaultLanguageServerPythonExecutable(): Promise<ExecutableAnd
         } else {
             // Just basename was specified: we need to find it in the PATH
             OUTPUT_CHANNEL.appendLine(
-                "Language server Python executable: searching " + languageServerPython + " in the PATH."
+                "Language server Python executable: searching " + languageServerPython + " in the PATH.",
             );
             const found = findExecutableInPath(languageServerPython);
             if (!found) {
                 OUTPUT_CHANNEL.appendLine(
-                    "Language server Python executable: could not find: " + languageServerPython + " in the PATH."
+                    "Language server Python executable: could not find: " + languageServerPython + " in the PATH.",
                 );
                 return {
                     executable: undefined,
@@ -254,7 +250,7 @@ const serverOptions: ServerOptions = async function () {
 
         let selection = await window.showWarningMessage(
             executableAndMessage.message,
-            ...[saveInUser, saveInWorkspace, "No"]
+            ...[saveInUser, saveInWorkspace, "No"],
         );
         // robot.language-server.python
         if (selection == saveInUser || selection == saveInWorkspace) {
@@ -291,10 +287,10 @@ const serverOptions: ServerOptions = async function () {
                             await config.update(
                                 "language-server.python",
                                 onfulfilled[0].fsPath,
-                                ConfigurationTarget.Global
+                                ConfigurationTarget.Global,
                             );
                             await window.showInformationMessage(
-                                "It was not possible to save the configuration in the workspace. It was saved in the user settings instead."
+                                "It was not possible to save the configuration in the workspace. It was saved in the user settings instead.",
                             );
                             err = undefined;
                         } catch (err2) {
@@ -353,7 +349,7 @@ const serverOptions: ServerOptions = async function () {
         let lsArgs = workspace.getConfiguration("robot").get<Array<string>>("language-server.args");
         if (lsArgs && !(lsArgs instanceof Array)) {
             OUTPUT_CHANNEL.appendLine(
-                "Ignoring robot.language-server.args because it's not an array. Found: " + lsArgs
+                "Ignoring robot.language-server.args because it's not an array. Found: " + lsArgs,
             );
             lsArgs = undefined;
         }
@@ -364,7 +360,7 @@ const serverOptions: ServerOptions = async function () {
             args.push("-v");
         }
         OUTPUT_CHANNEL.appendLine(
-            "Starting RobotFramework Language Server with args: " + executableAndMessage.executable[0] + "," + args
+            "Starting RobotFramework Language Server with args: " + executableAndMessage.executable[0] + "," + args,
         );
 
         let src: string = path.resolve(__dirname, "../../src");
@@ -373,7 +369,7 @@ const serverOptions: ServerOptions = async function () {
         });
         if (!serverProcess || !serverProcess.pid) {
             throw new Error(
-                `Launching server using command ${executableAndMessage.executable[0]} with args: ${args} failed.`
+                `Launching server using command ${executableAndMessage.executable[0]} with args: ${args} failed.`,
             );
         }
         return serverProcess;
@@ -395,7 +391,7 @@ async function registerLanguageServerListeners(langServer: LanguageClient) {
                         logError(
                             "Received invalid progress report: " + JSON.stringify(args),
                             new Error("Invalid progress report"),
-                            "EXT_INVALID_PROGRESS"
+                            "EXT_INVALID_PROGRESS",
                         );
                         return;
                     }
@@ -409,22 +405,22 @@ async function registerLanguageServerListeners(langServer: LanguageClient) {
                             });
                         }
                     }
-                })
+                }),
             );
 
             extensionContext.subscriptions.push(
                 langServer.onNotification("$/testsCollected", (args: ITestInfoFromUri) => {
                     handleTestsCollected(args);
-                })
+                }),
             );
             extensionContext.subscriptions.push(
                 langServer.onRequest("$/applySnippetWorkspaceEdit", async (params) => {
                     const edit: vscode.WorkspaceEdit = await langServer.protocol2CodeConverter.asWorkspaceEdit(
-                        params["edit"]
+                        params["edit"],
                     );
                     await applySnippetWorkspaceEdit(edit);
                     return true;
-                })
+                }),
             );
             extensionContext.subscriptions.push(
                 langServer.onRequest("$/executeWorkspaceCommand", async (args: ExecuteWorkspaceCommandArgs) => {
@@ -439,7 +435,7 @@ async function registerLanguageServerListeners(langServer: LanguageClient) {
                         }
                     }
                     return ret;
-                })
+                }),
             );
             // Note: don't dispose (we need to re-register on a restart).
             // stopListeningOnDidChangeState.dispose();
@@ -472,7 +468,7 @@ async function startLanguageServer(): Promise<LanguageClient> {
     langServer = new LanguageClient(
         "Robot Framework Language Server",
         serverOptions,
-        createClientOptions(initializationOptions)
+        createClientOptions(initializationOptions),
     );
 
     await setupTestExplorerSupport();
@@ -504,7 +500,7 @@ async function startLanguageServer(): Promise<LanguageClient> {
                     ". Found: " +
                     lsVersion +
                     "." +
-                    " Please uninstall the older version from the python environment."
+                    " Please uninstall the older version from the python environment.",
             );
         }
     } catch (err) {
@@ -551,7 +547,7 @@ async function restartLanguageServer() {
                         // ask it to start indexing only after ready.
                         commands.executeCommand("robot.startIndexing.internal");
                         OUTPUT_CHANNEL.appendLine(
-                            "RobotFramework Language Server restarted. Took: " + timing.getTotalElapsedAsStr()
+                            "RobotFramework Language Server restarted. Took: " + timing.getTotalElapsedAsStr(),
                         );
                     } catch (err) {
                         logError("Error restarting language server.", err, "EXT_RESTART_ROBOT_LS");
@@ -563,18 +559,24 @@ async function restartLanguageServer() {
                             const ok = await clearCachesAndRestartProcessesStart();
                             if (ok) {
                                 await clearCachesAndRestartProcessesFinish();
-                                window.showInformationMessage("Robot Framework Language Server reloaded with new settings.");
+                                window.showInformationMessage(
+                                    "Robot Framework Language Server reloaded with new settings.",
+                                );
                                 return;
                             }
                         } catch (err2) {
-                            logError("Error restarting language server after clearing caches.", err2, "EXT_RESTART_ROBOT_LS_CLEAR_CACHE");
+                            logError(
+                                "Error restarting language server after clearing caches.",
+                                err2,
+                                "EXT_RESTART_ROBOT_LS_CLEAR_CACHE",
+                            );
                         }
 
                         // If it still fails, ask the user to reload the window.
                         window
                             .showWarningMessage(
                                 'There was an error reloading the Robot Framework Language Server. Please use the "Reload Window" action to apply the new settings.',
-                                ...["Reload Window"]
+                                ...["Reload Window"],
                             )
                             .then((selection) => {
                                 if (selection === "Reload Window") {
@@ -599,7 +601,7 @@ async function restartLanguageServer() {
                     logError(msg, err, "EXT_UNABLE_TO_START_2");
                     window.showErrorMessage(msg);
                 }
-            }
+            },
         );
     });
 }
@@ -640,7 +642,7 @@ async function clearCachesAndRestartProcessesStart(): Promise<boolean> {
     return await languageServerClientMutex.dispatch(async () => {
         if (languageServerClient === undefined) {
             window.showErrorMessage(
-                "Unable to clear caches and restart because the language server still hasn't been successfully started."
+                "Unable to clear caches and restart because the language server still hasn't been successfully started.",
             );
             return false;
         }
@@ -677,7 +679,7 @@ async function clearCachesAndRestartProcessesFinish() {
         window
             .showWarningMessage(
                 'There was an error reloading the Robot Framework Language Server. Please use the "Reload Window" action to finish restarting the language server.',
-                ...["Reload Window"]
+                ...["Reload Window"],
             )
             .then((selection) => {
                 if (selection === "Reload Window") {
@@ -702,7 +704,7 @@ async function clearCachesAndRestartProcesses() {
             }
             await clearCachesAndRestartProcessesFinish();
             window.showInformationMessage("Caches cleared and Robot Framework Language Server restarted.");
-        }
+        },
     );
 }
 
@@ -723,7 +725,7 @@ function registerOnDidChangeConfiguration(context: ExtensionContext): void {
                     break;
                 }
             }
-        })
+        }),
     );
 }
 
@@ -799,12 +801,12 @@ async function openFlowExplorer(flowBundleHTMLFolderPath: string, uri?: string) 
                 },
                 async (
                     progress: vscode.Progress<{ message?: string; increment?: number }>,
-                    token: vscode.CancellationToken
+                    token: vscode.CancellationToken,
                 ): Promise<{ result: string; success: boolean; message: string | null } | null> =>
                     await commands.executeCommand("robot.openFlowExplorer.internal", {
                         "currentFileUri": uri,
                         "htmlBundleFolderPath": flowBundleHTMLFolderPath,
-                    })
+                    }),
             );
         if (!openResult || !openResult.success) {
             if (!openResult.message) {
@@ -813,7 +815,7 @@ async function openFlowExplorer(flowBundleHTMLFolderPath: string, uri?: string) 
             logError(
                 "Error while opening the Robot Flow Explorer",
                 Error(openResult.message),
-                "EXT_OPEN_FLOW_EXPLORER"
+                "EXT_OPEN_FLOW_EXPLORER",
             );
             window.showErrorMessage(DEFAULT_ERROR_MSG);
             OUTPUT_CHANNEL.show();
@@ -869,45 +871,45 @@ export async function activate(context: ExtensionContext) {
         extensionContext = context;
 
         context.subscriptions.push(
-            commands.registerCommand("robot.clearCachesAndRestartProcesses", clearCachesAndRestartProcesses)
+            commands.registerCommand("robot.clearCachesAndRestartProcesses", clearCachesAndRestartProcesses),
         );
         context.subscriptions.push(
             commands.registerCommand(
                 "robot.clearCachesAndRestartProcesses.start.internal",
-                clearCachesAndRestartProcessesStart
-            )
+                clearCachesAndRestartProcessesStart,
+            ),
         );
         context.subscriptions.push(
             commands.registerCommand(
                 "robot.clearCachesAndRestartProcesses.finish.internal",
-                clearCachesAndRestartProcessesFinish
-            )
+                clearCachesAndRestartProcessesFinish,
+            ),
         );
         context.subscriptions.push(
             commands.registerCommand("robot.openFlowExplorer", async (uri?: string) => {
                 const flowBundleHTMLFolderPath = context.asAbsolutePath("assets");
                 return openFlowExplorer(flowBundleHTMLFolderPath, uri);
-            })
+            }),
         );
 
         const provider = new RobotDocumentationViewProvider(context);
         context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider(RobotDocumentationViewProvider.viewType, provider)
+            vscode.window.registerWebviewViewProvider(RobotDocumentationViewProvider.viewType, provider),
         );
         context.subscriptions.push(
             commands.registerCommand("robot.view.documentation.pin", () => {
                 provider.pin();
-            })
+            }),
         );
         context.subscriptions.push(
             commands.registerCommand("robot.view.documentation.unpin", () => {
                 provider.unpin();
-            })
+            }),
         );
         const outputProvider = new RobotOutputViewProvider(context);
         const options = { webviewOptions: { retainContextWhenHidden: true } };
         context.subscriptions.push(
-            vscode.window.registerWebviewViewProvider(RobotOutputViewProvider.viewType, outputProvider, options)
+            vscode.window.registerWebviewViewProvider(RobotOutputViewProvider.viewType, outputProvider, options),
         );
 
         registerDebugger();
