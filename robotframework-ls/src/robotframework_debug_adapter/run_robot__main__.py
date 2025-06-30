@@ -665,6 +665,8 @@ def main():
         exitcode = run_cli(robot_args, exit=False)
     finally:
         processor.terminate()
+        # Clear the global comm so that the next debug session starts fresh.
+        global_vars.set_global_robot_target_comm(None)
         if processor.terminated.wait(2):
             log.debug("Processed dap terminate event in robot.")
         close_logging_streams()
