@@ -631,10 +631,11 @@ def main():
         )
 
     from robotframework_debug_adapter import global_vars
+    from robotframework_debug_adapter.debugger_impl import set_global_robot_debugger
 
-    # Reset the global connection reference to ensure new sessions
-    # do not reuse a previous communication channel.
+    # Reset global references so each session starts fresh.
     global_vars.set_global_robot_target_comm(None)
+    set_global_robot_debugger(None)
 
     processor = _RobotTargetComm(s, debug=debug)
 
@@ -665,8 +666,9 @@ def main():
         exitcode = run_cli(robot_args, exit=False)
     finally:
         processor.terminate()
-        # Clear the global comm so that the next debug session starts fresh.
+        # Clear globals so the next debug session starts clean.
         global_vars.set_global_robot_target_comm(None)
+        set_global_robot_debugger(None)
         if processor.terminated.wait(2):
             log.debug("Processed dap terminate event in robot.")
         close_logging_streams()
