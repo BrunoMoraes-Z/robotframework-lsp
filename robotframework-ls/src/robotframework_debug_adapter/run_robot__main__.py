@@ -633,7 +633,9 @@ def main():
     from robotframework_debug_adapter import global_vars
     from robotframework_debug_adapter.debugger_impl import set_global_robot_debugger
 
-    # Reset global references so each session starts fresh.
+    # Reset global references so each new debug session starts fresh and
+    # avoids reusing state from a previous run (which could freeze the console
+    # when the session is restarted).
     global_vars.set_global_robot_target_comm(None)
     set_global_robot_debugger(None)
 
