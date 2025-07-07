@@ -545,7 +545,7 @@ class _RobotTargetComm(threading.Thread):
             eval_info = self._debugger_impl.evaluate(frame_id, expression, context)
             try:
                 result = eval_info.future.result()
-            except Exception as e:
+            except BaseException as e:
                 err = "".join(traceback.format_exception_only(type(e), e))
                 response = self._evaluate_response(request, err, error_message=err)
             else:
