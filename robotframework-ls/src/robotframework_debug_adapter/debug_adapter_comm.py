@@ -256,6 +256,7 @@ class DebugAdapterComm(object):
             self._launch_process.disconnect(
                 DisconnectRequest(DisconnectArguments(restart=True))
             )
+            self._launch_process.wait_for_cleanup_completion()
 
         # Relaunch using the stored arguments
         self.on_launch_request(LaunchRequest(last_args))

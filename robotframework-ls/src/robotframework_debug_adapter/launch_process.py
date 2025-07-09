@@ -282,6 +282,8 @@ class LaunchProcess(object):
         "_next_seq",
         "_track_process_pid",
         "_env",
+        "_restart_in_progress",
+        "_cleanup_complete_event",
     ]
 
     def __init__(
@@ -317,6 +319,8 @@ class LaunchProcess(object):
         self._launch_response = launch_response
         self._next_seq = partial(next, itertools.count(0))
         self._track_process_pid = None
+        self._restart_in_progress = False
+        self._cleanup_complete_event = threading.Event()
 
         def mark_invalid(message):
             launch_response.success = False
@@ -567,6 +571,35 @@ class LaunchProcess(object):
             request, on_response
         )
 
+    def wait_for_cleanup_completion(self, timeout=10):
+        import time
+
+        start = time.time()
+        while time.time() - start < timeout:
+            if self._is_cleanup_complete():
+                return True
+            time.sleep(0.1)
+        return False
+
+    def _is_cleanup_complete(self):
+        if not self._restart_in_progress:
+            return True
+
+        if (
+            self._debug_adapter_robot_target_comm
+            and not self._debug_adapter_robot_target_comm.server_socket_is_closed()
+        ):
+            return False
+        if self._run_in_debug_mode:
+            if (
+                self._debug_adapter_pydevd_target_comm
+                and not self._debug_adapter_pydevd_target_comm.server_socket_is_closed()
+            ):
+                return False
+        self._restart_in_progress = False
+        self._cleanup_complete_event.set()
+        return True
+
     def write_to_robot_and_pydevd(self, request: BaseSchema):
         self._debug_adapter_robot_target_comm.write_to_robot_message(request)
         if self._run_in_debug_mode:
@@ -748,11 +781,14 @@ class LaunchProcess(object):
 
         if is_restart:
             # Clean up state to enable restart
+            self._restart_in_progress = True
+            self._cleanup_complete_event.clear()
             if self._debug_adapter_robot_target_comm:
                 self._debug_adapter_robot_target_comm.on_terminated_event(None)
                 self._debug_adapter_robot_target_comm.close()
             if self._debug_adapter_pydevd_target_comm:
                 self._debug_adapter_pydevd_target_comm.close()
+            self._cleanup_complete_event.set()
 
     def send_to_stdin(self, expression):
         popen = self._popen

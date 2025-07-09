@@ -211,7 +211,27 @@ class LaunchProcessDebugAdapterRobotTargetComm(BaseLaunchProcessTargetComm):
     def close(self) -> None:
         if self._server_socket is not None:
             try:
+                port = self._server_socket.getsockname()[1]
                 self._server_socket.close()
+                self._server_socket = None
+                self._verify_port_released(port)
             except Exception:
                 log.exception("Error closing server socket")
-            self._server_socket = None
+
+    def _verify_port_released(self, port, timeout=5):
+        import socket
+        import time
+
+        start = time.time()
+        while time.time() - start < timeout:
+            try:
+                test_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                test_socket.bind(("127.0.0.1", port))
+                test_socket.close()
+                return True
+            except OSError:
+                time.sleep(0.1)
+        return False
+
+    def server_socket_is_closed(self):
+        return self._server_socket is None
