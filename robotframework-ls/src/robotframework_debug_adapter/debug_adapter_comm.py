@@ -31,6 +31,8 @@ from robocorp_ls_core.debug_adapter_core.dap.dap_schema import (
     InitializedEvent,
     LaunchRequest,
     LaunchResponse,
+    RestartRequest,
+    DisconnectArguments,
     NextRequest,
     PauseRequest,
     ScopesRequest,
@@ -75,6 +77,7 @@ class DebugAdapterComm(object):
         self._supports_run_in_terminal = False
         self._initialize_request_arguments = None
         self._run_in_debug_mode = True
+        self._last_launch_arguments = None
 
         # i.e.: When a backend receives a stopped event, it sets itself as
         # a weakreference in weak_stopped_target_comm (so that we can redirect
@@ -136,6 +139,7 @@ class DebugAdapterComm(object):
         capabilities.supportsEvaluateForHovers = True
         capabilities.supportsHitConditionalBreakpoints = True
         capabilities.supportsLogPoints = True
+        capabilities.supportsRestartRequest = True
         capabilities.exceptionBreakpointFilters = [
             {"filter": "logFailure", "label": "Robot Log FAIL", "default": True},
             {"filter": "logError", "label": "Robot Log ERROR", "default": True},
@@ -156,6 +160,8 @@ class DebugAdapterComm(object):
         )
 
         self._run_in_debug_mode = run_in_debug_mode = not request.arguments.noDebug
+
+        self._last_launch_arguments = request.arguments
 
         launch_response: LaunchResponse = build_response(request)
         launch_process = None
@@ -236,6 +242,24 @@ class DebugAdapterComm(object):
             self._launch_process.disconnect(request)
 
         self.write_to_client_message(disconnect_response)
+
+    def on_restart_request(self, request: RestartRequest):
+        restart_response = base_schema.build_response(request)
+        last_args = self._last_launch_arguments
+        if last_args is None:
+            restart_response.success = False
+            restart_response.message = "No previous launch information to restart"
+            self.write_to_client_message(restart_response)
+            return
+
+        if self._launch_process is not None:
+            self._launch_process.disconnect(
+                DisconnectRequest(DisconnectArguments(restart=True))
+            )
+
+        # Relaunch using the stored arguments
+        self.on_launch_request(LaunchRequest(last_args))
+        self.write_to_client_message(restart_response)
 
     def on_pause_request(self, request: PauseRequest):
         if self._run_in_debug_mode and self._launch_process is not None:

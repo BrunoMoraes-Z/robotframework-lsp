@@ -307,6 +307,14 @@ class _DebuggerAPI(object):
             msg = self.read(expect_class=tuple(expected))
             return msg
 
+    def restart(self):
+        from robocorp_ls_core.debug_adapter_core.dap.dap_schema import RestartRequest
+        from robocorp_ls_core.debug_adapter_core.dap.dap_schema import RestartResponse
+
+        self.write(RestartRequest())
+        response = self.read(RestartResponse)
+        return response
+
     def launch(
         self,
         target,

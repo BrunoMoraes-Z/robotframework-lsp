@@ -732,11 +732,11 @@ class LaunchProcess(object):
 
     def disconnect(self, disconnect_request: DisconnectRequest) -> None:
         from robocorp_ls_core.options import is_true_in_env
+        is_restart = False
+        if disconnect_request.arguments:
+            is_restart = bool(disconnect_request.arguments.restart)
 
         is_terminated = self._debug_adapter_robot_target_comm.is_terminated()
-        # i.e.: if the disconnect happens before the RF session sends a terminate
-        # then we need to kill subprocesses (this means the user pressed the
-        # stop button).
         if is_true_in_env("RFLS_KILL_ZOMBIE_PROCESSES") or not is_terminated:
             from robocorp_ls_core.basic import kill_process_and_subprocesses
 
@@ -745,6 +745,11 @@ class LaunchProcess(object):
                     kill_process_and_subprocesses(self._popen.pid)
             else:
                 kill_process_and_subprocesses(self._track_process_pid)
+
+        if is_restart:
+            # Clean up state to enable restart
+            if self._debug_adapter_robot_target_comm:
+                self._debug_adapter_robot_target_comm.on_terminated_event(None)
 
     def send_to_stdin(self, expression):
         popen = self._popen
