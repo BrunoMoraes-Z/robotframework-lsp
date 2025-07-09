@@ -637,7 +637,7 @@ Evaluation
         try:
             r = self._do_eval(debugger_impl)
             self.future.set_result(r.result)
-        except Exception as e:
+        except BaseException as e:
             if get_log_level() >= 2:
                 log.exception("Error evaluating: %s", (self.expression,))
             self.future.set_exception(e)

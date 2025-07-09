@@ -207,3 +207,10 @@ class LaunchProcessDebugAdapterRobotTargetComm(BaseLaunchProcessTargetComm):
         ret = self._process_event.wait(DEFAULT_TIMEOUT)
         log.debug("Received process event: %s" % (ret,))
         return ret
+
+    def reset_for_restart(self) -> None:
+        self._connected_event.clear()
+        self._process_event.clear()
+        with self._terminated_lock:
+            self._terminated_event.clear()
+            self._terminated_event_msg = None
