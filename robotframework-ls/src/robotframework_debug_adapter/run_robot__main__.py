@@ -631,13 +631,6 @@ def main():
         )
 
     from robotframework_debug_adapter import global_vars
-    from robotframework_debug_adapter.debugger_impl import set_global_robot_debugger
-
-    # Reset global references so each new debug session starts fresh and
-    # avoids reusing state from a previous run (which could freeze the console
-    # when the session is restarted).
-    global_vars.set_global_robot_target_comm(None)
-    set_global_robot_debugger(None)
 
     processor = _RobotTargetComm(s, debug=debug)
 
@@ -670,7 +663,6 @@ def main():
         processor.terminate()
         # Clear globals so the next debug session starts clean.
         global_vars.set_global_robot_target_comm(None)
-        set_global_robot_debugger(None)
         if processor.terminated.wait(2):
             log.debug("Processed dap terminate event in robot.")
         close_logging_streams()
