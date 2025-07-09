@@ -58,13 +58,6 @@ class BaseLaunchProcessTargetComm(threading.Thread):
         self._next_seq: INextSeq = partial(next, itertools.count(0))
         self._msg_id_to_on_response: Dict[int, Optional[IProtocolMessageCallable]] = {}
 
-    def reset_for_restart(self) -> None:
-        self._connected_event.clear()
-        self._process_event.clear()
-        with self._terminated_lock:
-            self._terminated_event.clear()
-            self._terminated_event_msg = None
-
     def _handle_received_protocol_message_from_backend(
         self, protocol_message: BaseSchema, backend: str
     ) -> None:

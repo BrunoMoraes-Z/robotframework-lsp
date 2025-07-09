@@ -143,24 +143,6 @@ def test_simple_debug_launch_stop_on_robot(debugger_api: _DebuggerAPI):
     debugger_api.continue_event(json_hit.thread_id, accept_terminated=True)
 
 
-def test_restart_request(debugger_api: _DebuggerAPI):
-    from robocorp_ls_core.debug_adapter_core.dap.dap_schema import TerminatedEvent
-
-    debugger_api.initialize()
-    target = debugger_api.get_dap_case_file("case_log.robot")
-
-    debugger_api.launch(target, debug=True)
-    debugger_api.configuration_done()
-
-    debugger_api.read(TerminatedEvent)
-    debugger_api.restart()
-
-    debugger_api.launch(target, debug=True)
-    debugger_api.configuration_done()
-
-    debugger_api.read(TerminatedEvent)
-
-
 def test_simple_debug_launch_stop_on_pydevd(debugger_api: _DebuggerAPI):
     from robocorp_ls_core.debug_adapter_core.dap.dap_schema import TerminatedEvent
 

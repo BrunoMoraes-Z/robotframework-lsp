@@ -314,13 +314,6 @@ function handleTestRunFinished(runId: string) {
     }
 }
 
-function handleTestRunRestart(runId: string) {
-    if (runIdToDebugSession.has(runId)) {
-        runIdToDebugSession.delete(runId);
-    }
-    // Keep the test run so that it continues after restart.
-}
-
 async function launch(
     workspaceFolders: vscode.WorkspaceFolder[],
     runId: string,
@@ -471,12 +464,7 @@ export async function setupTestExplorerSupport() {
 
     vscode.debug.onDidTerminateDebugSession((session: vscode.DebugSession) => {
         if (isRelatedSession(session)) {
-            const isRestart = session.configuration.__restart;
-            if (isRestart) {
-                handleTestRunRestart(session.configuration.runId);
-            } else {
-                handleTestRunFinished(session.configuration.runId);
-            }
+            handleTestRunFinished(session.configuration.runId);
         }
     });
 

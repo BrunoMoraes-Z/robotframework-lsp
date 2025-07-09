@@ -545,7 +545,7 @@ class _RobotTargetComm(threading.Thread):
             eval_info = self._debugger_impl.evaluate(frame_id, expression, context)
             try:
                 result = eval_info.future.result()
-            except BaseException as e:
+            except Exception as e:
                 err = "".join(traceback.format_exception_only(type(e), e))
                 response = self._evaluate_response(request, err, error_message=err)
             else:
@@ -630,12 +630,9 @@ def main():
             notify_stdin=False,
         )
 
-    from robotframework_debug_adapter import global_vars
-    from robotframework_debug_adapter.debugger_impl import (
-        set_global_robot_debugger,
-    )
-
     processor = _RobotTargetComm(s, debug=debug)
+
+    from robotframework_debug_adapter import global_vars
 
     global_vars.set_global_robot_target_comm(processor)
 
@@ -664,9 +661,7 @@ def main():
         exitcode = run_cli(robot_args, exit=False)
     finally:
         processor.terminate()
-        # Clear globals so the next debug session starts clean.
         global_vars.set_global_robot_target_comm(None)
-        set_global_robot_debugger(None)
         if processor.terminated.wait(2):
             log.debug("Processed dap terminate event in robot.")
         close_logging_streams()

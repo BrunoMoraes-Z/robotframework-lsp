@@ -599,15 +599,6 @@ class _DebuggerAPI(object):
         )
         return eval_response
 
-    def restart(self):
-        from robocorp_ls_core.debug_adapter_core.dap.dap_schema import RestartRequest
-        from robocorp_ls_core.debug_adapter_core.dap.dap_schema import RestartResponse
-
-        request = self.write(RestartRequest())
-        response = self.wait_for_response(request, RestartResponse)
-        assert response.success
-        return response
-
 
 @pytest.fixture(scope="session")
 def dap_resources_dir(tmpdir_factory):

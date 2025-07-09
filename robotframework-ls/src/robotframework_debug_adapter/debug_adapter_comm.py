@@ -136,7 +136,6 @@ class DebugAdapterComm(object):
         capabilities.supportsEvaluateForHovers = True
         capabilities.supportsHitConditionalBreakpoints = True
         capabilities.supportsLogPoints = True
-        capabilities.supportsRestartRequest = True
         capabilities.exceptionBreakpointFilters = [
             {"filter": "logFailure", "label": "Robot Log FAIL", "default": True},
             {"filter": "logError", "label": "Robot Log ERROR", "default": True},
@@ -237,14 +236,6 @@ class DebugAdapterComm(object):
             self._launch_process.disconnect(request)
 
         self.write_to_client_message(disconnect_response)
-
-    def on_restart_request(self, request):
-        restart_response = base_schema.build_response(request)
-
-        if self._launch_process is not None:
-            self._launch_process.clean_restart()
-
-        self.write_to_client_message(restart_response)
 
     def on_pause_request(self, request: PauseRequest):
         if self._run_in_debug_mode and self._launch_process is not None:
