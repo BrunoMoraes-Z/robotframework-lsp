@@ -750,6 +750,9 @@ class LaunchProcess(object):
             # Clean up state to enable restart
             if self._debug_adapter_robot_target_comm:
                 self._debug_adapter_robot_target_comm.on_terminated_event(None)
+                self._debug_adapter_robot_target_comm.close()
+            if self._debug_adapter_pydevd_target_comm:
+                self._debug_adapter_pydevd_target_comm.close()
 
     def send_to_stdin(self, expression):
         popen = self._popen

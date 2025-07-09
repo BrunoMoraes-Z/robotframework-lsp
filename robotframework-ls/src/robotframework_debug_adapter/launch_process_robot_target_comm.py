@@ -207,3 +207,11 @@ class LaunchProcessDebugAdapterRobotTargetComm(BaseLaunchProcessTargetComm):
         ret = self._process_event.wait(DEFAULT_TIMEOUT)
         log.debug("Received process event: %s" % (ret,))
         return ret
+
+    def close(self) -> None:
+        if self._server_socket is not None:
+            try:
+                self._server_socket.close()
+            except Exception:
+                log.exception("Error closing server socket")
+            self._server_socket = None

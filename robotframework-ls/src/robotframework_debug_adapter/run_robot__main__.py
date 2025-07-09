@@ -5,6 +5,7 @@ import sys
 import threading
 import traceback
 import queue
+import time
 
 __file__ = os.path.abspath(__file__)
 if __file__.endswith((".pyc", ".pyo")):
@@ -40,18 +41,27 @@ def connect(port):
     except AttributeError:
         pass  # May not be available everywhere.
 
-    try:
-        # 10 seconds default timeout
-        timeout = os.environ.get(ENV_OPTION_ROBOT_DAP_TIMEOUT, DEFAULT_TIMEOUT)
-        if timeout is not None:
-            s.settimeout(int(timeout))
-        s.connect(("127.0.0.1", port))
-        s.settimeout(None)  # no timeout after connected
-        log.info("Connected.")
-        return s
-    except:
-        log.exception("Could not connect to: %s", port)
-        raise
+    timeout = os.environ.get(ENV_OPTION_ROBOT_DAP_TIMEOUT, DEFAULT_TIMEOUT)
+    if timeout is not None:
+        s.settimeout(int(timeout))
+
+    delays = [0, 1, 2, 4, 8, 15]
+    last_exc = None
+    for delay in delays:
+        if delay:
+            log.debug("Retrying connection in %ss", delay)
+            time.sleep(delay)
+        try:
+            s.connect(("127.0.0.1", port))
+            s.settimeout(None)  # no timeout after connected
+            log.info("Connected.")
+            return s
+        except Exception as e:
+            last_exc = e
+            log.exception("Could not connect to: %s", port)
+
+    if last_exc:
+        raise last_exc
 
 
 class _RobotTargetComm(threading.Thread):
