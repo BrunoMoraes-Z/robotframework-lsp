@@ -511,31 +511,49 @@ class _EvaluationInfo(object):
         if not dap_frames:
             raise InvalidFrameIdError("No frames for evaluation.")
 
+        frame_index = None
+        for index, dap_frame in enumerate(dap_frames):
+            if dap_frame.id == frame_id:
+                frame_index = index
+                break
+
+        if frame_index is None:
+            raise InvalidFrameIdError(
+                "Unable to find frame info for evaluation: %s" % (frame_id,)
+            )
+
         info = stack_info._frame_id_to_frame_info.get(frame_id)
         if info is None:
             raise InvalidFrameIdError(
                 "Unable to find frame info for evaluation: %s" % (frame_id,)
             )
 
-        if isinstance(info, _LogFrameInfo):
-            parent_frame_id = None
-            for index, dap_frame in enumerate(dap_frames):
-                if dap_frame.id == frame_id:
-                    if index + 1 < len(dap_frames):
-                        parent_frame_id = dap_frames[index + 1].id
+        if not isinstance(info, _KeywordFrameInfo):
+            keyword_frame_id = None
+            keyword_info = None
+            for ancestor_index in range(frame_index + 1, len(dap_frames)):
+                candidate_frame_id = dap_frames[ancestor_index].id
+                candidate_info = stack_info._frame_id_to_frame_info.get(
+                    candidate_frame_id
+                )
+                if isinstance(candidate_info, _KeywordFrameInfo):
+                    keyword_frame_id = candidate_frame_id
+                    keyword_info = candidate_info
                     break
 
-            if parent_frame_id is None:
-                raise InvalidFrameIdError(
-                    "Unable to evaluate in Log frame entry without a parent."
+            if keyword_info is None:
+                if isinstance(info, _LogFrameInfo):
+                    raise InvalidFrameIdError(
+                        "Unable to evaluate in Log frame entry without a parent."
+                    )
+
+                raise InvalidFrameTypeError(
+                    "Can only evaluate at a Keyword context (current context: %s)"
+                    % (info.get_type_name(),)
                 )
 
-            frame_id = parent_frame_id
-            info = stack_info._frame_id_to_frame_info.get(frame_id)
-            if info is None:
-                raise InvalidFrameIdError(
-                    "Unable to find frame info for evaluation: %s" % (frame_id,)
-                )
+            frame_id = keyword_frame_id
+            info = keyword_info
 
         if not isinstance(info, _KeywordFrameInfo):
             raise InvalidFrameTypeError(

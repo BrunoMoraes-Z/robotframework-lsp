@@ -776,6 +776,19 @@ def test_debugger_core_evaluate(
 
         assert len(frame_ids) >= 2
 
+        stack_info = debugger_impl._get_stack_info_from_frame_id(frame_ids[0])
+        from robotframework_debug_adapter.debugger_impl import _SuiteFrameInfo
+        from robotframework_debug_adapter.debugger_impl import _TestFrameInfo
+
+        test_frame_id = None
+        suite_frame_id = None
+        for candidate in frame_ids:
+            info = stack_info._frame_id_to_frame_info.get(candidate)
+            if isinstance(info, _TestFrameInfo) and test_frame_id is None:
+                test_frame_id = candidate
+            elif isinstance(info, _SuiteFrameInfo) and suite_frame_id is None:
+                suite_frame_id = candidate
+
         # Keyword evaluation works on parent frames.
         parent_filename = str(tmpdir.join("parent_file.txt"))
         parent_filename = parent_filename.replace("\\", "/")
@@ -789,13 +802,20 @@ def test_debugger_core_evaluate(
 
         assert contents == content
 
+        if test_frame_id is not None:
+            eval_info = debugger_impl.evaluate(test_frame_id, "${arg0}")
+            assert eval_info.future.result() == "2"
+
         # Fail when evaluating in a frame that is not a keyword.
         non_keyword_frame_id = None
-        for candidate in frame_ids:
-            scopes = debugger_impl.get_scopes(candidate)
-            if not scopes:
-                non_keyword_frame_id = candidate
-                break
+        if suite_frame_id is not None:
+            non_keyword_frame_id = suite_frame_id
+        else:
+            for candidate in frame_ids:
+                scopes = debugger_impl.get_scopes(candidate)
+                if not scopes:
+                    non_keyword_frame_id = candidate
+                    break
 
         if non_keyword_frame_id is not None:
             eval_info = debugger_impl.evaluate(
