@@ -750,7 +750,6 @@ def test_debugger_core_evaluate(
 
     from robotframework_debug_adapter.debugger_impl import InvalidFrameIdError
     from robotframework_debug_adapter.debugger_impl import InvalidFrameTypeError
-    from robotframework_debug_adapter.debugger_impl import UnableToEvaluateError
 
     thread_id = debugger_impl.get_current_thread_id(robot_thread)
     target = debugger_api_core.get_dap_case_file("case_evaluate.robot")
@@ -775,22 +774,46 @@ def test_debugger_core_evaluate(
         with pytest.raises(InvalidFrameIdError):
             eval_info.future.result()
 
-        # Fail because the stack selected is not the top entry.
-        eval_info = debugger_impl.evaluate(
-            frame_ids[-1], "Create File    %s    content=%s" % (filename, content)
+        assert len(frame_ids) >= 2
+
+        # Keyword evaluation works on parent frames.
+        parent_filename = str(tmpdir.join("parent_file.txt"))
+        parent_filename = parent_filename.replace("\\", "/")
+        parent_eval = debugger_impl.evaluate(
+            frame_ids[1],
+            "Create File    %s    content=%s" % (parent_filename, content),
         )
-        with pytest.raises(UnableToEvaluateError):
-            eval_info.future.result()
+        assert parent_eval.future.result() is None
+        with open(parent_filename, "r") as stream:
+            contents = stream.read()
 
-        assert not os.path.exists(filename)
+        assert contents == content
 
-        # Keyword evaluation works
+        # Fail when evaluating in a frame that is not a keyword.
+        non_keyword_frame_id = None
+        for candidate in frame_ids:
+            scopes = debugger_impl.get_scopes(candidate)
+            if not scopes:
+                non_keyword_frame_id = candidate
+                break
+
+        if non_keyword_frame_id is not None:
+            eval_info = debugger_impl.evaluate(
+                non_keyword_frame_id,
+                "Create File    %s    content=%s" % (filename, content),
+            )
+            with pytest.raises(InvalidFrameTypeError):
+                eval_info.future.result()
+
+        # Keyword evaluation works on the top frame.
+        top_filename = str(tmpdir.join("top_frame.txt"))
+        top_filename = top_filename.replace("\\", "/")
         eval_info = debugger_impl.evaluate(
-            frame_ids[0], "Create File    %s    content=%s" % (filename, content)
+            frame_ids[0], "Create File    %s    content=%s" % (top_filename, content)
         )
 
         assert eval_info.future.result() is None
-        with open(filename, "r") as stream:
+        with open(top_filename, "r") as stream:
             contents = stream.read()
 
         assert contents == content
@@ -806,7 +829,11 @@ def test_debugger_core_evaluate(
         eval_info = debugger_impl.evaluate(
             frame_ids[0], "Should Be Equal", context="hover"
         )
-        assert eval_info.future.result() == "BuiltIn.Should Be Equal"
+        hover_result = eval_info.future.result()
+        if IS_ROBOT_7_ONWARDS:
+            assert hover_result in ("BuiltIn.Should Be Equal", "Should Be Equal")
+        else:
+            assert hover_result == "BuiltIn.Should Be Equal"
 
     finally:
         debugger_impl.step_continue()

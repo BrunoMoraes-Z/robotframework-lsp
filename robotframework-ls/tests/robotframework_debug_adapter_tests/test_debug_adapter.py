@@ -769,17 +769,11 @@ def test_evaluate(debugger_api: _DebuggerAPI):
     )
     assert "UserKeywordExecutionFailed: 2 != 1" in response.message
 
-    # We can't evaluate keywords that are not in the top level.
     parent_frame_id = json_hit.stack_trace_response.body.stackFrames[1]["id"]
     response = debugger_api.evaluate(
-        "My Equal Redefined     2   2",
-        frameId=parent_frame_id,
-        context="repl",
-        success=False,
+        "${arg1}", frameId=parent_frame_id, context="watch"
     )
-    assert (
-        "Keyword calls may only be evaluated at the topmost frame" in response.message
-    )
+    assert response.body.result == "2"
 
     debugger_api.set_breakpoints(
         target, debugger_api.get_line_index_with_content("Break 2")

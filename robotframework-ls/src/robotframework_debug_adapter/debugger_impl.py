@@ -511,20 +511,6 @@ class _EvaluationInfo(object):
         if not dap_frames:
             raise InvalidFrameIdError("No frames for evaluation.")
 
-        top_frame_id = dap_frames[0].id
-        if top_frame_id != frame_id:
-            if get_log_level() >= 2:
-                log.debug(
-                    "Unable to evaluate.\nFrame id for evaluation: %r\nTop frame id: %r.\nDAP frames:\n%s",
-                    frame_id,
-                    top_frame_id,
-                    "\n".join(x.to_json() for x in dap_frames),
-                )
-
-            raise UnableToEvaluateError(
-                "Keyword calls may only be evaluated at the topmost frame."
-            )
-
         info = stack_info._frame_id_to_frame_info.get(frame_id)
         if info is None:
             raise InvalidFrameIdError(
@@ -532,18 +518,24 @@ class _EvaluationInfo(object):
             )
 
         if isinstance(info, _LogFrameInfo):
-            if len(dap_frames) < 2:
+            parent_frame_id = None
+            for index, dap_frame in enumerate(dap_frames):
+                if dap_frame.id == frame_id:
+                    if index + 1 < len(dap_frames):
+                        parent_frame_id = dap_frames[index + 1].id
+                    break
+
+            if parent_frame_id is None:
                 raise InvalidFrameIdError(
                     "Unable to evaluate in Log frame entry without a parent."
                 )
 
-            else:
-                frame_id = dap_frames[1].id
-                info = stack_info._frame_id_to_frame_info.get(frame_id)
-                if info is None:
-                    raise InvalidFrameIdError(
-                        "Unable to find frame info for evaluation: %s" % (frame_id,)
-                    )
+            frame_id = parent_frame_id
+            info = stack_info._frame_id_to_frame_info.get(frame_id)
+            if info is None:
+                raise InvalidFrameIdError(
+                    "Unable to find frame info for evaluation: %s" % (frame_id,)
+                )
 
         if not isinstance(info, _KeywordFrameInfo):
             raise InvalidFrameTypeError(
