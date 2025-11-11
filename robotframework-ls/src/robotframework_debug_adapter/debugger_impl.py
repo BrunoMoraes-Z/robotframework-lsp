@@ -1369,6 +1369,8 @@ class _RobotDebuggerImpl(object):
 
     def _break_on_log_or_system_message(self, message, path, lineno):
         stop_reason = None
+        if self._skip_breakpoints:
+            return
         if message.level == "FAIL":
             if self.break_on_log_failure:
                 stop_reason = ReasonEnum.REASON_EXCEPTION

@@ -123,3 +123,36 @@ def test_impl_recovery_do_nothing():
 
     impl.end_suite(suite_data, result)
     assert len(impl._stack_ctx_entries_deque) == 0
+
+
+class _Message:
+    def __init__(self, level: str, message: str):
+        self.level = level
+        self.message = message
+
+
+def test_break_on_log_respects_skip_breakpoints():
+    from robotframework_debug_adapter.debugger_impl import (
+        _RobotDebuggerImpl,
+        ReasonEnum,
+    )
+
+    impl = _RobotDebuggerImpl()
+    impl.break_on_log_failure = True
+
+    called = []
+
+    def fake_wait(reason):
+        called.append(reason)
+
+    impl.wait_suspended = fake_wait  # type: ignore
+
+    message = _Message("FAIL", "from test")
+
+    impl._skip_breakpoints = 1
+    impl._break_on_log_or_system_message(message, "case.robot", 10)
+    assert called == []
+
+    impl._skip_breakpoints = 0
+    impl._break_on_log_or_system_message(message, "case.robot", 10)
+    assert called == [ReasonEnum.REASON_EXCEPTION]
