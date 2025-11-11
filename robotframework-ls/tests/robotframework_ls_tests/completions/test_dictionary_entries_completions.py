@@ -259,6 +259,52 @@ Dictionary Variable
     assert {"Home of Aalto University"} == labels
 
 
+def test_dictionary_entries_dot_completion_with_equals(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+    from .test_variable_type_completions import _get_completion_labels
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+
+    doc = workspace.put_doc(
+        "case2.robot",
+        """*** Variables ***
+&{PRODUTO_PAGE}    input_nome=css:[data-testid='nome']
+...    btn_cadastrar=css:[data-testid='cadastarProdutos']
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${PRODUTO_PAGE.}
+""",
+    )
+
+    line = doc.find_line_with_contents("    Log    ${PRODUTO_PAGE.}")
+    line_text = doc.source.splitlines()[line]
+    col = line_text.index("${PRODUTO_PAGE.}") + len("${PRODUTO_PAGE.")
+
+    context = CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+
+    normalized = dict(
+        dictionary_completions._iter_all_normalized_variables_and_values(context)
+    )
+    assert normalized.get("produtopage") is not None
+
+    completions = dictionary_completions.complete(context)
+
+    labels = _get_completion_labels(completions)
+    assert {"input_nome", "btn_cadastrar"} == labels
+
+    completions_by_label = {item["label"]: item for item in completions}
+    assert (
+        completions_by_label["input_nome"]["detail"]
+        == "css:[data-testid='nome']"
+    )
+    assert (
+        completions_by_label["btn_cadastrar"]["detail"]
+        == "css:[data-testid='cadastarProdutos']"
+    )
+
+
 def test_dictionary_entries_completion_disabled(workspace, libspec_manager):
     from robotframework_ls.impl.completion_context import CompletionContext
     from robotframework_ls.impl import dictionary_completions

@@ -45,7 +45,12 @@ def _as_dictionary(
 
     dictionary = {}
     for token in dict_tokens:
-        key, val = token.split("=")
+        key, sep, val = token.partition("=")
+        if not sep:
+            continue
+        key = key.strip()
+        val = val.strip()
+
         if normalize:
             key = normalize_robot_name(key)
         if filter_token and filter_token not in normalize_robot_name(key):
