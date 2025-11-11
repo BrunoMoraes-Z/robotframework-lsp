@@ -195,6 +195,18 @@ class RobotDebugConfigurationProvider implements DebugConfigurationProvider {
                 debugConfiguration.internalConsoleOptions = "neverOpen";
             }
         }
+
+        const allowEvaluateInOtherStacks: boolean | undefined = config.get(
+            "debug.allowEvaluateInOtherStacks"
+        );
+        if (allowEvaluateInOtherStacks) {
+            if (!debugConfiguration.env) {
+                debugConfiguration.env = {};
+            }
+            debugConfiguration.env["RFLS_ALLOW_EVALUATE_IN_OTHER_STACKS"] = "1";
+        } else if (debugConfiguration.env) {
+            delete debugConfiguration.env["RFLS_ALLOW_EVALUATE_IN_OTHER_STACKS"];
+        }
         return debugConfiguration;
     }
 }

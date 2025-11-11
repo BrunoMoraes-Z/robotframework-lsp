@@ -511,18 +511,15 @@ class _EvaluationInfo(object):
         if not dap_frames:
             raise InvalidFrameIdError("No frames for evaluation.")
 
-        top_frame_id = dap_frames[0].id
-        if top_frame_id != frame_id:
-            if get_log_level() >= 2:
-                log.debug(
-                    "Unable to evaluate.\nFrame id for evaluation: %r\nTop frame id: %r.\nDAP frames:\n%s",
-                    frame_id,
-                    top_frame_id,
-                    "\n".join(x.to_json() for x in dap_frames),
-                )
+        frame_index = None
+        for index, dap_frame in enumerate(dap_frames):
+            if dap_frame.id == frame_id:
+                frame_index = index
+                break
 
-            raise UnableToEvaluateError(
-                "Keyword calls may only be evaluated at the topmost frame."
+        if frame_index is None:
+            raise InvalidFrameIdError(
+                "Unable to find frame info for evaluation: %s" % (frame_id,)
             )
 
         info = stack_info._frame_id_to_frame_info.get(frame_id)
@@ -531,19 +528,57 @@ class _EvaluationInfo(object):
                 "Unable to find frame info for evaluation: %s" % (frame_id,)
             )
 
-        if isinstance(info, _LogFrameInfo):
-            if len(dap_frames) < 2:
-                raise InvalidFrameIdError(
-                    "Unable to evaluate in Log frame entry without a parent."
+        allow_other_stacks = debugger_impl.allow_evaluate_in_other_stacks
+
+        if not allow_other_stacks and frame_index != 0:
+            raise UnableToEvaluateError(
+                "Keyword calls may only be evaluated at the topmost frame."
+            )
+
+        if not isinstance(info, _KeywordFrameInfo):
+            if not allow_other_stacks:
+                if isinstance(info, _LogFrameInfo):
+                    raise InvalidFrameIdError(
+                        "Unable to evaluate in Log frame entry without a parent."
+                    )
+
+                raise InvalidFrameTypeError(
+                    "Can only evaluate at a Keyword context (current context: %s)"
+                    % (info.get_type_name(),)
                 )
 
-            else:
-                frame_id = dap_frames[1].id
-                info = stack_info._frame_id_to_frame_info.get(frame_id)
-                if info is None:
+            keyword_frame_id = None
+            keyword_info = None
+
+            def iter_candidate_indexes():
+                for descendant_index in range(frame_index - 1, -1, -1):
+                    yield descendant_index
+                for ancestor_index in range(frame_index + 1, len(dap_frames)):
+                    yield ancestor_index
+
+            for candidate_index in iter_candidate_indexes():
+                candidate_frame_id = dap_frames[candidate_index].id
+                candidate_info = stack_info._frame_id_to_frame_info.get(
+                    candidate_frame_id
+                )
+                if isinstance(candidate_info, _KeywordFrameInfo):
+                    keyword_frame_id = candidate_frame_id
+                    keyword_info = candidate_info
+                    break
+
+            if keyword_info is None:
+                if isinstance(info, _LogFrameInfo):
                     raise InvalidFrameIdError(
-                        "Unable to find frame info for evaluation: %s" % (frame_id,)
+                        "Unable to evaluate in Log frame entry without a parent."
                     )
+
+                raise InvalidFrameTypeError(
+                    "Can only evaluate at a Keyword context (current context: %s)"
+                    % (info.get_type_name(),)
+                )
+
+            frame_id = keyword_frame_id
+            info = keyword_info
 
         if not isinstance(info, _KeywordFrameInfo):
             raise InvalidFrameTypeError(
@@ -692,6 +727,9 @@ class _RobotDebuggerImpl(object):
 
         self.break_on_log_failure = is_true_in_env("RFLS_BREAK_ON_FAILURE")
         self.break_on_log_error = is_true_in_env("RFLS_BREAK_ON_ERROR")
+        self.allow_evaluate_in_other_stacks = is_true_in_env(
+            "RFLS_ALLOW_EVALUATE_IN_OTHER_STACKS"
+        )
         self._ignore_failures_in_stack = IgnoreFailuresInStack()
 
     def enable_no_debug_mode(self):

@@ -25,6 +25,7 @@ Configuration settings
 - `robot.completions.dictionaryEntries.enable`: enables or disables suggestions for dictionary variable entries.
 
 - `robot.codeFormatter`: used to configure the code-formatter to be used.
+- `robot.debug.allowEvaluateInOtherStacks`: allow evaluating expressions from non-topmost stack frames when debugging (default: false).
 
 - `robot.flowExplorerTheme`: used to configure the Robot Flow Explorer theme to be used.
 

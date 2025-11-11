@@ -775,22 +775,127 @@ def test_debugger_core_evaluate(
         with pytest.raises(InvalidFrameIdError):
             eval_info.future.result()
 
-        # Fail because the stack selected is not the top entry.
-        eval_info = debugger_impl.evaluate(
-            frame_ids[-1], "Create File    %s    content=%s" % (filename, content)
+        assert len(frame_ids) >= 2
+
+        stack_info = debugger_impl._get_stack_info_from_frame_id(frame_ids[0])
+        from robotframework_debug_adapter.debugger_impl import _SuiteFrameInfo
+        from robotframework_debug_adapter.debugger_impl import _TestFrameInfo
+        from robotframework_debug_adapter.debugger_impl import _KeywordFrameInfo
+
+        test_frame_id = None
+        suite_frame_id = None
+        for candidate in frame_ids:
+            info = stack_info._frame_id_to_frame_info.get(candidate)
+            if isinstance(info, _TestFrameInfo) and test_frame_id is None:
+                test_frame_id = candidate
+            elif isinstance(info, _SuiteFrameInfo) and suite_frame_id is None:
+                suite_frame_id = candidate
+
+        # By default only the topmost keyword may be evaluated.
+        parent_blocked_filename = str(tmpdir.join("parent_blocked.txt"))
+        parent_blocked_filename = parent_blocked_filename.replace("\\", "/")
+        parent_blocked = debugger_impl.evaluate(
+            frame_ids[1],
+            "Create File    %s    content=%s"
+            % (parent_blocked_filename, content),
         )
         with pytest.raises(UnableToEvaluateError):
-            eval_info.future.result()
+            parent_blocked.future.result()
+        assert not os.path.exists(parent_blocked_filename)
 
-        assert not os.path.exists(filename)
+        if test_frame_id is not None:
+            test_blocked_filename = str(tmpdir.join("test_blocked.txt"))
+            test_blocked_filename = test_blocked_filename.replace("\\", "/")
+            test_blocked = debugger_impl.evaluate(
+                test_frame_id,
+                "Create File    %s    content=%s"
+                % (test_blocked_filename, content),
+            )
+            with pytest.raises(InvalidFrameTypeError):
+                test_blocked.future.result()
+            assert not os.path.exists(test_blocked_filename)
 
-        # Keyword evaluation works
+        if suite_frame_id is not None:
+            suite_blocked_filename = str(tmpdir.join("suite_blocked.txt"))
+            suite_blocked_filename = suite_blocked_filename.replace("\\", "/")
+            suite_blocked = debugger_impl.evaluate(
+                suite_frame_id,
+                "Create File    %s    content=%s"
+                % (suite_blocked_filename, content),
+            )
+            with pytest.raises(InvalidFrameTypeError):
+                suite_blocked.future.result()
+            assert not os.path.exists(suite_blocked_filename)
+
+        debugger_impl.allow_evaluate_in_other_stacks = True
+
+        # Keyword evaluation works on parent frames when enabled.
+        parent_filename = str(tmpdir.join("parent_file.txt"))
+        parent_filename = parent_filename.replace("\\", "/")
+        parent_eval = debugger_impl.evaluate(
+            frame_ids[1],
+            "Create File    %s    content=%s" % (parent_filename, content),
+        )
+        assert parent_eval.future.result() is None
+        with open(parent_filename, "r") as stream:
+            contents = stream.read()
+
+        assert contents == content
+
+        if test_frame_id is not None:
+            test_frame_filename = str(tmpdir.join("test_frame.txt"))
+            test_frame_filename = test_frame_filename.replace("\\", "/")
+            test_eval = debugger_impl.evaluate(
+                test_frame_id,
+                "Create File    %s    content=%s" % (test_frame_filename, content),
+            )
+            assert test_eval.future.result() is None
+            with open(test_frame_filename, "r") as stream:
+                assert stream.read() == content
+
+        if suite_frame_id is not None:
+            suite_frame_filename = str(tmpdir.join("suite_frame.txt"))
+            suite_frame_filename = suite_frame_filename.replace("\\", "/")
+            suite_eval = debugger_impl.evaluate(
+                suite_frame_id,
+                "Create File    %s    content=%s" % (suite_frame_filename, content),
+            )
+            assert suite_eval.future.result() is None
+            with open(suite_frame_filename, "r") as stream:
+                assert stream.read() == content
+
+        # Fail when evaluating in a frame that is not a keyword and there is no keyword context available.
+        keyword_entries = {
+            candidate_frame_id: candidate_info
+            for candidate_frame_id, candidate_info in stack_info._frame_id_to_frame_info.items()
+            if isinstance(candidate_info, _KeywordFrameInfo)
+        }
+
+        if keyword_entries:
+            for candidate_frame_id in tuple(keyword_entries):
+                stack_info._frame_id_to_frame_info.pop(candidate_frame_id)
+
+        try:
+            if test_frame_id is not None:
+                eval_info = debugger_impl.evaluate(
+                    test_frame_id,
+                    "Create File    %s    content=%s" % (filename, content),
+                )
+                with pytest.raises(InvalidFrameTypeError):
+                    eval_info.future.result()
+        finally:
+            if keyword_entries:
+                stack_info._frame_id_to_frame_info.update(keyword_entries)
+
+        # Keyword evaluation works on the top frame.
+        top_filename = str(tmpdir.join("top_frame.txt"))
+        top_filename = top_filename.replace("\\", "/")
         eval_info = debugger_impl.evaluate(
-            frame_ids[0], "Create File    %s    content=%s" % (filename, content)
+            frame_ids[0], "Create File    %s    content=%s" % (top_filename, content)
         )
 
         assert eval_info.future.result() is None
-        with open(filename, "r") as stream:
+        with open(top_filename, "r") as stream:
             contents = stream.read()
 
         assert contents == content
@@ -806,7 +911,11 @@ def test_debugger_core_evaluate(
         eval_info = debugger_impl.evaluate(
             frame_ids[0], "Should Be Equal", context="hover"
         )
-        assert eval_info.future.result() == "BuiltIn.Should Be Equal"
+        hover_result = eval_info.future.result()
+        if IS_ROBOT_7_ONWARDS:
+            assert hover_result in ("BuiltIn.Should Be Equal", "Should Be Equal")
+        else:
+            assert hover_result == "BuiltIn.Should Be Equal"
 
     finally:
         debugger_impl.step_continue()
