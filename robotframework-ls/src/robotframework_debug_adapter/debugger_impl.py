@@ -528,7 +528,25 @@ class _EvaluationInfo(object):
                 "Unable to find frame info for evaluation: %s" % (frame_id,)
             )
 
+        allow_other_stacks = debugger_impl.allow_evaluate_in_other_stacks
+
+        if not allow_other_stacks and frame_index != 0:
+            raise UnableToEvaluateError(
+                "Keyword calls may only be evaluated at the topmost frame."
+            )
+
         if not isinstance(info, _KeywordFrameInfo):
+            if not allow_other_stacks:
+                if isinstance(info, _LogFrameInfo):
+                    raise InvalidFrameIdError(
+                        "Unable to evaluate in Log frame entry without a parent."
+                    )
+
+                raise InvalidFrameTypeError(
+                    "Can only evaluate at a Keyword context (current context: %s)"
+                    % (info.get_type_name(),)
+                )
+
             keyword_frame_id = None
             keyword_info = None
 
@@ -709,6 +727,9 @@ class _RobotDebuggerImpl(object):
 
         self.break_on_log_failure = is_true_in_env("RFLS_BREAK_ON_FAILURE")
         self.break_on_log_error = is_true_in_env("RFLS_BREAK_ON_ERROR")
+        self.allow_evaluate_in_other_stacks = is_true_in_env(
+            "RFLS_ALLOW_EVALUATE_IN_OTHER_STACKS"
+        )
         self._ignore_failures_in_stack = IgnoreFailuresInStack()
 
     def enable_no_debug_mode(self):

@@ -750,6 +750,7 @@ def test_debugger_core_evaluate(
 
     from robotframework_debug_adapter.debugger_impl import InvalidFrameIdError
     from robotframework_debug_adapter.debugger_impl import InvalidFrameTypeError
+    from robotframework_debug_adapter.debugger_impl import UnableToEvaluateError
 
     thread_id = debugger_impl.get_current_thread_id(robot_thread)
     target = debugger_api_core.get_dap_case_file("case_evaluate.robot")
@@ -790,7 +791,45 @@ def test_debugger_core_evaluate(
             elif isinstance(info, _SuiteFrameInfo) and suite_frame_id is None:
                 suite_frame_id = candidate
 
-        # Keyword evaluation works on parent frames.
+        # By default only the topmost keyword may be evaluated.
+        parent_blocked_filename = str(tmpdir.join("parent_blocked.txt"))
+        parent_blocked_filename = parent_blocked_filename.replace("\\", "/")
+        parent_blocked = debugger_impl.evaluate(
+            frame_ids[1],
+            "Create File    %s    content=%s"
+            % (parent_blocked_filename, content),
+        )
+        with pytest.raises(UnableToEvaluateError):
+            parent_blocked.future.result()
+        assert not os.path.exists(parent_blocked_filename)
+
+        if test_frame_id is not None:
+            test_blocked_filename = str(tmpdir.join("test_blocked.txt"))
+            test_blocked_filename = test_blocked_filename.replace("\\", "/")
+            test_blocked = debugger_impl.evaluate(
+                test_frame_id,
+                "Create File    %s    content=%s"
+                % (test_blocked_filename, content),
+            )
+            with pytest.raises(InvalidFrameTypeError):
+                test_blocked.future.result()
+            assert not os.path.exists(test_blocked_filename)
+
+        if suite_frame_id is not None:
+            suite_blocked_filename = str(tmpdir.join("suite_blocked.txt"))
+            suite_blocked_filename = suite_blocked_filename.replace("\\", "/")
+            suite_blocked = debugger_impl.evaluate(
+                suite_frame_id,
+                "Create File    %s    content=%s"
+                % (suite_blocked_filename, content),
+            )
+            with pytest.raises(InvalidFrameTypeError):
+                suite_blocked.future.result()
+            assert not os.path.exists(suite_blocked_filename)
+
+        debugger_impl.allow_evaluate_in_other_stacks = True
+
+        # Keyword evaluation works on parent frames when enabled.
         parent_filename = str(tmpdir.join("parent_file.txt"))
         parent_filename = parent_filename.replace("\\", "/")
         parent_eval = debugger_impl.evaluate(

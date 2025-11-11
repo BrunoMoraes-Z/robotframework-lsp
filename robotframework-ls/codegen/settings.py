@@ -274,6 +274,11 @@ SETTINGS = {
         "default": True,
         "description": "Whether to show robot tests in the test view. You may want to disable this if you are using another test runner (eg. https://github.com/DetachHead/pytest-robotframework)",
     },
+    "robot.debug.allowEvaluateInOtherStacks": {
+        "type": "boolean",
+        "default": False,
+        "description": "Allow evaluating expressions from non-topmost stack frames when debugging.",
+    },
 }
 
 
