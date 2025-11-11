@@ -531,8 +531,15 @@ class _EvaluationInfo(object):
         if not isinstance(info, _KeywordFrameInfo):
             keyword_frame_id = None
             keyword_info = None
-            for ancestor_index in range(frame_index + 1, len(dap_frames)):
-                candidate_frame_id = dap_frames[ancestor_index].id
+
+            def iter_candidate_indexes():
+                for descendant_index in range(frame_index - 1, -1, -1):
+                    yield descendant_index
+                for ancestor_index in range(frame_index + 1, len(dap_frames)):
+                    yield ancestor_index
+
+            for candidate_index in iter_candidate_indexes():
+                candidate_frame_id = dap_frames[candidate_index].id
                 candidate_info = stack_info._frame_id_to_frame_info.get(
                     candidate_frame_id
                 )
