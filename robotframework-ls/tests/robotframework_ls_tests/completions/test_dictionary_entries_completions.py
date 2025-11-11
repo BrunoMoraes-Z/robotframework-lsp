@@ -284,3 +284,52 @@ Dictionary Variable
         )
     )
     assert completions == []
+
+
+def test_dictionary_entries_bracket_with_single_quotes(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """
+*** Variables ***
+&{Person}   First name=John   Last name=Smith
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${Person['Fir']}
+"""
+    line = doc.find_line_with_contents("    Log    ${Person['Fir']}")
+    line_text = doc.source.splitlines()[line]
+    prefix = "${Person['Fir"
+    col = line_text.index("${Person['Fir']}") + len(prefix)
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+    assert {item["label"] for item in completions} == {"First name"}
+    assert completions[0]["detail"] == "John"
+
+
+def test_dictionary_entries_bracket_with_double_quotes(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """
+*** Variables ***
+&{Codes}   home=123   work=456
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${Codes["wo"]}
+"""
+    line = doc.find_line_with_contents('    Log    ${Codes["wo"]}')
+    line_text = doc.source.splitlines()[line]
+    prefix = '${Codes["wo'
+    col = line_text.index('${Codes["wo"]}') + len(prefix)
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+    assert {item["label"] for item in completions} == {"work"}

@@ -1,4 +1,4 @@
-from typing import Dict, Tuple, Sequence, Iterator, List
+from typing import Dict, Tuple, Sequence, Iterator, List, Optional, NamedTuple
 from robocorp_ls_core.robotframework_log import get_logger
 from robotframework_ls.impl.protocols import ICompletionContext
 from robocorp_ls_core.lsp import (
@@ -71,6 +71,193 @@ def _completion_items(
     ]
 
 
+class _BracketCompletionInfo(NamedTuple):
+    base_name: str
+    path_items: List[str]
+    filter_token: str
+    start_offset: int
+    end_offset: int
+
+
+def _get_bracket_completion_info_from_robot(
+    token,
+    value: str,
+    col: int,
+) -> Optional[_BracketCompletionInfo]:
+    from robotframework_ls.impl.variable_resolve import iter_robot_variable_matches
+    from robotframework_ls.impl.ast_utils import iter_robot_match_as_tokens
+    from robotframework_ls.impl.text_utilities import normalize_robot_name
+
+    last_opening_bracket_column = -1
+
+    items_seen = []
+
+    prev_rtoken = None
+    for robot_match, relative_index in iter_robot_variable_matches(value):
+        robot_match_start = token.col_offset + relative_index + robot_match.start
+        robot_match_end = token.col_offset + relative_index + robot_match.end
+
+        if robot_match.base and robot_match_start < col < robot_match_end:
+            for rtoken in iter_robot_match_as_tokens(
+                robot_match, relative_index=robot_match_start, lineno=token.lineno
+            ):
+                if rtoken.type == "[":
+                    last_opening_bracket_column = rtoken.col_offset
+
+                if rtoken.col_offset >= col:
+                    if (
+                        rtoken.type == "item"
+                        and rtoken.col_offset == rtoken.end_col_offset
+                    ):
+                        prev_rtoken = rtoken
+                        items_seen.append(rtoken)
+
+                    break
+
+                if rtoken.type == "item":
+                    items_seen.append(rtoken)
+
+                prev_rtoken = rtoken
+
+            break
+    else:
+        return None
+
+    if prev_rtoken is None:
+        return None
+
+    if prev_rtoken.type not in ("[", "item"):
+        return None
+
+    if last_opening_bracket_column == -1:
+        return None
+
+    search_items = []
+    if len(items_seen) > 1:
+        for item in items_seen[:-1]:
+            search_items.append(item.value)
+
+    if prev_rtoken.type == "[":
+        start_offset = end_offset = prev_rtoken.col_offset
+        filter_token = ""
+    else:
+        start_offset = prev_rtoken.col_offset
+        end_offset = prev_rtoken.end_col_offset
+        filter_token = normalize_robot_name(prev_rtoken.value)
+
+    return _BracketCompletionInfo(
+        base_name=robot_match.base,
+        path_items=search_items,
+        filter_token=filter_token,
+        start_offset=start_offset,
+        end_offset=end_offset,
+    )
+
+
+def _get_bracket_completion_info_inside_braces(
+    token,
+    value: str,
+    col: int,
+) -> Optional[_BracketCompletionInfo]:
+    from robotframework_ls.impl.text_utilities import normalize_robot_name
+
+    offset = col - token.col_offset
+    if offset < 0:
+        return None
+
+    prefixes = ("${", "@{", "&{")
+    var_start = -1
+    for prefix in prefixes:
+        idx = value.rfind(prefix, 0, offset)
+        if idx > var_start:
+            var_start = idx
+    if var_start == -1:
+        return None
+
+    first_close_brace = value.find("}", var_start)
+    first_open_bracket = value.find("[", var_start)
+    if (
+        first_open_bracket == -1
+        or first_close_brace == -1
+        or first_open_bracket > first_close_brace
+    ):
+        return None
+
+    base_section = value[var_start + 2 : first_open_bracket]
+    colon_i = base_section.find(":")
+    if colon_i != -1:
+        base_name = base_section[:colon_i].rstrip()
+    else:
+        base_name = base_section
+    base_name = base_name.strip()
+    if not base_name:
+        return None
+
+    items: List[str] = []
+    current = ""
+    current_start: Optional[int] = None
+    in_bracket = False
+    in_string = False
+    string_char = ""
+
+    i = first_open_bracket
+    while i < offset and i < len(value):
+        ch = value[i]
+        if not in_bracket:
+            if ch == "[":
+                in_bracket = True
+                current = ""
+                current_start = i + 1
+                in_string = False
+                string_char = ""
+            elif ch == "}":
+                break
+        else:
+            if in_string:
+                if ch == string_char:
+                    in_string = False
+                else:
+                    current += ch
+            else:
+                if ch in ("'", '"') and current == "":
+                    in_string = True
+                    string_char = ch
+                    current_start = i + 1
+                elif ch == "]":
+                    items.append(current.strip())
+                    current = ""
+                    current_start = None
+                    in_bracket = False
+                elif ch == "[":
+                    items.append(current.strip())
+                    current = ""
+                    current_start = i + 1
+                    in_string = False
+                    string_char = ""
+                elif ch.isspace() and current == "":
+                    current_start = i + 1
+                else:
+                    current += ch
+        i += 1
+
+    if not in_bracket:
+        return None
+
+    filter_token = normalize_robot_name(current.strip())
+    start_offset = token.col_offset + (current_start or offset)
+    end_offset = token.col_offset + offset
+
+    path_items = [item for item in items if item]
+
+    return _BracketCompletionInfo(
+        base_name=base_name,
+        path_items=path_items,
+        filter_token=filter_token,
+        start_offset=start_offset,
+        end_offset=end_offset,
+    )
+
+
 def _iter_all_normalized_variables_and_values(
     completion_context: ICompletionContext,
 ) -> Iterator[Tuple[str, Tuple[str, ...]]]:
@@ -132,14 +319,11 @@ def _resolve_dictionary_for_path(
 
 
 def complete(completion_context: ICompletionContext) -> List[CompletionItemTypedDict]:
-    from robotframework_ls.impl.variable_resolve import iter_robot_variable_matches
-    from robotframework_ls.impl.ast_utils import iter_robot_match_as_tokens
     from robotframework_ls.impl.text_utilities import normalize_robot_name
     from robotframework_ls.impl.variable_resolve import robot_search_variable
     from robotframework_ls.impl.robot_generated_lsp_constants import (
         OPTION_ROBOT_COMPLETIONS_DICTIONARY_ENTRIES_ENABLE,
     )
-    import re
 
     config = completion_context.config
     if config is not None and not config.get_setting(
@@ -204,74 +388,28 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
         )
         return _completion_items(dictionary, editor_range)
 
-    last_opening_bracket_column = -1
-
-    items_seen = []
-
-    prev_rtoken = None
-    for robot_match, relative_index in iter_robot_variable_matches(value):
-        robot_match_start = token.col_offset + relative_index + robot_match.start
-        robot_match_end = token.col_offset + relative_index + robot_match.end
-
-        if robot_match.base and robot_match_start < col < robot_match_end:
-            # Now, let's see in which item/offset we're in.
-            for rtoken in iter_robot_match_as_tokens(
-                robot_match, relative_index=robot_match_start, lineno=token.lineno
-            ):
-                if rtoken.type == "[":
-                    last_opening_bracket_column = rtoken.col_offset
-
-                if rtoken.col_offset >= col:
-                    if (
-                        rtoken.type == "item"
-                        and rtoken.col_offset == rtoken.end_col_offset
-                    ):
-                        # dealing with empty item at cursor
-                        prev_rtoken = rtoken
-                        items_seen.append(rtoken)
-
-                    # The prev_rtoken is the one we're interested in
-                    break
-
-                if rtoken.type == "item":
-                    items_seen.append(rtoken)
-
-                prev_rtoken = rtoken
-
-            break
-    else:
+    bracket_info = _get_bracket_completion_info_from_robot(
+        token, value, col
+    )
+    if bracket_info is None:
+        bracket_info = _get_bracket_completion_info_inside_braces(
+            token, value, col
+        )
+    if bracket_info is None:
         return []
 
-    if prev_rtoken is None:
-        return []
-
-    if prev_rtoken.type not in ("[", "item"):
-        return []
-
-    if last_opening_bracket_column == -1:
-        return []
-
-    search_items_normalized = [normalize_robot_name(robot_match.base)]
-    if len(items_seen) > 1:
-        for item in items_seen[:-1]:
-            # The last one is the one we're currently completing
-            search_items_normalized.append(normalize_robot_name(item.value))
-
-    selection = completion_context.sel
-
-    if prev_rtoken.type == "[":
-        start_offset = end_offset = prev_rtoken.col_offset
-        filter_token = ""
-    else:
-        start_offset = prev_rtoken.col_offset
-        end_offset = prev_rtoken.end_col_offset
-        filter_token = normalize_robot_name(prev_rtoken.value)
+    base_name, path_items, filter_token, start_offset, end_offset = bracket_info
 
     normalized_variables_and_values = dict(
         _iter_all_normalized_variables_and_values(completion_context)
     )
 
-    last_dict = None
+    selection = completion_context.sel
+
+    search_items_normalized = [normalize_robot_name(base_name)]
+    for item in path_items:
+        search_items_normalized.append(normalize_robot_name(item))
+
     count = 0
     while search_items_normalized:
         count += 1
@@ -281,6 +419,7 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
                 search_items_normalized,
             )
             return []
+
         search_name_normalized = search_items_normalized.pop(0)
 
         variable_values = normalized_variables_and_values.get(search_name_normalized)
@@ -293,22 +432,23 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
                 end=Position(selection.line, end_offset),
             )
             return _completion_items(dictionary, editor_range)
-        else:
-            last_dict = _as_dictionary(variable_values, normalize=True)
 
-            next_search = last_dict.get(search_items_normalized.pop(0))
-            if not next_search:
-                return []
+        last_dict = _as_dictionary(variable_values, normalize=True)
 
-            if not next_search.startswith("&{"):
-                return []
+        next_search = search_items_normalized.pop(0)
+        next_value = last_dict.get(next_search)
+        if not next_value:
+            return []
 
-            new_match = robot_search_variable(next_search)
-            if not new_match or not new_match.base:
-                return []
+        if not next_value.startswith("&{"):
+            return []
 
-            for it in reversed(new_match.items):
-                search_items_normalized.insert(0, normalize_robot_name(it))
-            search_items_normalized.insert(0, normalize_robot_name(new_match.base))
+        new_match = robot_search_variable(next_value)
+        if not new_match or not new_match.base:
+            return []
+
+        for it in reversed(new_match.items):
+            search_items_normalized.insert(0, normalize_robot_name(it))
+        search_items_normalized.insert(0, normalize_robot_name(new_match.base))
 
     return []
