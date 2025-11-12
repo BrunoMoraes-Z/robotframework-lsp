@@ -252,7 +252,17 @@ def _get_bracket_completion_info_inside_braces(
     start_offset = token.col_offset + (current_start or offset)
     end_offset = token.col_offset + offset
 
-    path_items = [item for item in items if item]
+    if "." in base_name:
+        split_base = [part.strip() for part in base_name.split(".") if part.strip()]
+        if not split_base:
+            return None
+        base_name = split_base[0]
+        base_path_items = split_base[1:]
+    else:
+        base_path_items = []
+
+    path_items = base_path_items
+    path_items.extend(item for item in items if item)
 
     return _BracketCompletionInfo(
         base_name=base_name,
@@ -352,46 +362,51 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
     if prefix.startswith(("${", "@{", "&{")) and "." in prefix:
         inside = prefix[2:]
         parts = inside.split(".")
-        base_part = parts[0]
-        colon_i = base_part.find(":")
-        if colon_i != -1:
-            base_name = base_part[:colon_i].rstrip()
+        if parts and any("[" in part for part in parts[-1:]):
+            parts = []  # fall back to bracket handling below
         else:
-            base_name = base_part
+            base_part = parts[0]
+            colon_i = base_part.find(":")
+            if colon_i != -1:
+                base_name = base_part[:colon_i].rstrip()
+            else:
+                base_name = base_part
 
-        path_items = parts[1:]
-        if prefix.endswith("."):
-            if path_items and path_items[-1] == "":
+            path_items = parts[1:]
+            if prefix.endswith("."):
+                if path_items and path_items[-1] == "":
+                    path_items = path_items[:-1]
+                filter_token = ""
+            else:
+                filter_token = (
+                    normalize_robot_name(path_items[-1]) if path_items else ""
+                )
                 path_items = path_items[:-1]
-            filter_token = ""
-        else:
-            filter_token = normalize_robot_name(path_items[-1]) if path_items else ""
-            path_items = path_items[:-1]
 
-        start_offset = token.col_offset + len(prefix_before_col) - len(filter_token)
-        end_offset = col
+            start_offset = token.col_offset + len(prefix_before_col) - len(filter_token)
+            end_offset = col
 
-        normalized_vars = dict(
-            _iter_all_normalized_variables_and_values(completion_context)
-        )
-        variable_values = _resolve_dictionary_for_path(
-            normalized_vars, base_name, path_items
-        )
-        if not variable_values:
-            return []
+            normalized_vars = dict(
+                _iter_all_normalized_variables_and_values(completion_context)
+            )
+            variable_values = _resolve_dictionary_for_path(
+                normalized_vars, base_name, path_items
+            )
+            if not variable_values:
+                return []
 
-        try:
-            dictionary = _as_dictionary(variable_values, filter_token=filter_token)
-        except Exception:
-            return []
+            try:
+                dictionary = _as_dictionary(variable_values, filter_token=filter_token)
+            except Exception:
+                return []
 
-        log.debug("dot completion dictionary %s", dictionary)
+            log.debug("dot completion dictionary %s", dictionary)
 
-        editor_range = Range(
-            start=Position(completion_context.sel.line, start_offset),
-            end=Position(completion_context.sel.line, end_offset),
-        )
-        return _completion_items(dictionary, editor_range)
+            editor_range = Range(
+                start=Position(completion_context.sel.line, start_offset),
+                end=Position(completion_context.sel.line, end_offset),
+            )
+            return _completion_items(dictionary, editor_range)
 
     bracket_info = _get_bracket_completion_info_from_robot(
         token, value, col
