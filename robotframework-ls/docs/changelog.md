@@ -1,3 +1,16 @@
+New in 1.14.0 (2025-02-14)
+-----------------------------
+
+### New features
+
+- Language server clients are now auto-detected, seamlessly switching between the legacy Robocorp Code extension and the newer Sema4.ai extension.
+- Added a configuration toggle (`robot.completions.dictionaryEntries.enable`) to decide when dictionary key completions should be suggested.
+
+### Bugfixes
+
+- Improved stability when dictionary completions are disabled and a workspace relies heavily on dynamic variables.
+
+
 New in 1.13.0 (2024-10-03)
 -----------------------------
 
