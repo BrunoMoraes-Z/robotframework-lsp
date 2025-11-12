@@ -6,7 +6,7 @@ Steps to do a new release
 
 - Create release branch (`git branch -D release-robotframework-lsp&git checkout -b release-robotframework-lsp`)
 
-- Update version (`python -m dev set-version 1.13.0`).
+- Update version (`python -m dev set-version 1.14.0`).
 
 - Update README.md to add notes on features/fixes (on `robotframework-ls` and `robotframework-intellij`).
 
@@ -16,28 +16,27 @@ Steps to do a new release
   - Use `https://markdowntohtml.com/` to convert the changelog to HTML.
 
 - Push contents, get the build in https://github.com/robocorp/robotframework-lsp/actions and install locally to test.
-  - `mu acp Robot Framework Language Server Release 1.13.0`
+  - `mu acp Robot Framework Language Server Release 1.14.0`
 
 - Rebase with master (`git checkout master&git rebase release-robotframework-lsp`).
 
-- Create a tag (`git tag robotframework-lsp-1.13.0`) and push it.
+- Create a tag (`git tag robotframework-lsp-1.14.0`) and push it.
 
 - Send release msg. i.e.:
 
 Hi @channel,
 
-I'm happy to announce the release of `Robot Framework Language Server 1.13.0`.
+I'm happy to announce the release of `Robot Framework Language Server 1.14.0`.
 
 ### New features
 
-- `robotfamework-output-stream` updated to `0.0.6`. It now has functionality to hide sensitive data.
-    See: https://github.com/robocorp/robotframework-output-stream/blob/master/docs/handling_sensitive_data.md
-- Variables in variable subscript are now properly found. [#889](https://github.com/robocorp/robotframework-lsp/issues/889)
+- The language server now detects whether the Robocorp Code or Sema4.ai client is active and adjusts its integration automatically.
+- New configuration toggle (`robot.completions.dictionaryEntries.enable`) allows choosing when dictionary key completions should appear.
 
 
 ### Bugfixes
 
-- If the user completes something as `$var`, complete to `${variable}` instead of `$${variable}`.
+- Improved resiliency when dictionary completions are disabled in workspaces that build keywords dynamically.
 
 ### Intellij
 
