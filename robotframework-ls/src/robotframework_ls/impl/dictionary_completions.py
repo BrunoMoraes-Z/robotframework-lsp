@@ -60,14 +60,24 @@ def _as_dictionary(
 
 
 def _completion_items(
-    dictionary: Dict[str, str], editor_range: Range
+    dictionary: Dict[str, str],
+    editor_range: Range,
+    quote_char: Optional[str] = None,
 ) -> List[CompletionItemTypedDict]:
+    if quote_char:
+        def to_new_text(key: str) -> str:
+            return f"{quote_char}{key}{quote_char}"
+
+    else:
+        def to_new_text(key: str) -> str:
+            return key
+
     return [
         CompletionItem(
             key,
             kind=CompletionItemKind.Variable,
-            text_edit=TextEdit(editor_range, key),
-            insertText=key,
+            text_edit=TextEdit(editor_range, to_new_text(key)),
+            insertText=to_new_text(key),
             detail=value,
             documentation=value,
             insertTextFormat=InsertTextFormat.Snippet,
@@ -82,6 +92,7 @@ class _BracketCompletionInfo(NamedTuple):
     filter_token: str
     start_offset: int
     end_offset: int
+    quote_char: Optional[str] = None
 
 
 def _get_bracket_completion_info_from_robot(
@@ -150,12 +161,22 @@ def _get_bracket_completion_info_from_robot(
         end_offset = prev_rtoken.end_col_offset
         filter_token = normalize_robot_name(prev_rtoken.value)
 
+    quote_char: Optional[str] = None
+    if last_opening_bracket_column != -1:
+        open_index = last_opening_bracket_column - token.col_offset
+        cursor_relative = col - token.col_offset
+        if open_index >= -1 and cursor_relative >= 0:
+            between = value[open_index + 1 : cursor_relative]
+            if not any(ch in ('"', "'") for ch in between):
+                quote_char = "'"
+
     return _BracketCompletionInfo(
         base_name=robot_match.base,
         path_items=search_items,
         filter_token=filter_token,
         start_offset=start_offset,
         end_offset=end_offset,
+        quote_char=quote_char,
     )
 
 
@@ -204,6 +225,7 @@ def _get_bracket_completion_info_inside_braces(
     in_bracket = False
     in_string = False
     string_char = ""
+    last_bracket_index = -1
 
     i = first_open_bracket
     while i < offset and i < len(value):
@@ -215,6 +237,7 @@ def _get_bracket_completion_info_inside_braces(
                 current_start = i + 1
                 in_string = False
                 string_char = ""
+                last_bracket_index = i
             elif ch == "}":
                 break
         else:
@@ -239,6 +262,7 @@ def _get_bracket_completion_info_inside_braces(
                     current_start = i + 1
                     in_string = False
                     string_char = ""
+                    last_bracket_index = i
                 elif ch.isspace() and current == "":
                     current_start = i + 1
                 else:
@@ -252,7 +276,23 @@ def _get_bracket_completion_info_inside_braces(
     start_offset = token.col_offset + (current_start or offset)
     end_offset = token.col_offset + offset
 
-    path_items = [item for item in items if item]
+    if "." in base_name:
+        split_base = [part.strip() for part in base_name.split(".") if part.strip()]
+        if not split_base:
+            return None
+        base_name = split_base[0]
+        base_path_items = split_base[1:]
+    else:
+        base_path_items = []
+
+    path_items = base_path_items
+    path_items.extend(item for item in items if item)
+
+    quote_char: Optional[str] = None
+    if last_bracket_index != -1:
+        between = value[last_bracket_index + 1 : offset]
+        if not any(ch in ('"', "'") for ch in between):
+            quote_char = "'"
 
     return _BracketCompletionInfo(
         base_name=base_name,
@@ -260,6 +300,7 @@ def _get_bracket_completion_info_inside_braces(
         filter_token=filter_token,
         start_offset=start_offset,
         end_offset=end_offset,
+        quote_char=quote_char,
     )
 
 
@@ -352,46 +393,51 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
     if prefix.startswith(("${", "@{", "&{")) and "." in prefix:
         inside = prefix[2:]
         parts = inside.split(".")
-        base_part = parts[0]
-        colon_i = base_part.find(":")
-        if colon_i != -1:
-            base_name = base_part[:colon_i].rstrip()
+        if parts and any("[" in part for part in parts[-1:]):
+            parts = []  # fall back to bracket handling below
         else:
-            base_name = base_part
+            base_part = parts[0]
+            colon_i = base_part.find(":")
+            if colon_i != -1:
+                base_name = base_part[:colon_i].rstrip()
+            else:
+                base_name = base_part
 
-        path_items = parts[1:]
-        if prefix.endswith("."):
-            if path_items and path_items[-1] == "":
+            path_items = parts[1:]
+            if prefix.endswith("."):
+                if path_items and path_items[-1] == "":
+                    path_items = path_items[:-1]
+                filter_token = ""
+            else:
+                filter_token = (
+                    normalize_robot_name(path_items[-1]) if path_items else ""
+                )
                 path_items = path_items[:-1]
-            filter_token = ""
-        else:
-            filter_token = normalize_robot_name(path_items[-1]) if path_items else ""
-            path_items = path_items[:-1]
 
-        start_offset = token.col_offset + len(prefix_before_col) - len(filter_token)
-        end_offset = col
+            start_offset = token.col_offset + len(prefix_before_col) - len(filter_token)
+            end_offset = col
 
-        normalized_vars = dict(
-            _iter_all_normalized_variables_and_values(completion_context)
-        )
-        variable_values = _resolve_dictionary_for_path(
-            normalized_vars, base_name, path_items
-        )
-        if not variable_values:
-            return []
+            normalized_vars = dict(
+                _iter_all_normalized_variables_and_values(completion_context)
+            )
+            variable_values = _resolve_dictionary_for_path(
+                normalized_vars, base_name, path_items
+            )
+            if not variable_values:
+                return []
 
-        try:
-            dictionary = _as_dictionary(variable_values, filter_token=filter_token)
-        except Exception:
-            return []
+            try:
+                dictionary = _as_dictionary(variable_values, filter_token=filter_token)
+            except Exception:
+                return []
 
-        log.debug("dot completion dictionary %s", dictionary)
+            log.debug("dot completion dictionary %s", dictionary)
 
-        editor_range = Range(
-            start=Position(completion_context.sel.line, start_offset),
-            end=Position(completion_context.sel.line, end_offset),
-        )
-        return _completion_items(dictionary, editor_range)
+            editor_range = Range(
+                start=Position(completion_context.sel.line, start_offset),
+                end=Position(completion_context.sel.line, end_offset),
+            )
+            return _completion_items(dictionary, editor_range)
 
     bracket_info = _get_bracket_completion_info_from_robot(
         token, value, col
@@ -403,7 +449,14 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
     if bracket_info is None:
         return []
 
-    base_name, path_items, filter_token, start_offset, end_offset = bracket_info
+    (
+        base_name,
+        path_items,
+        filter_token,
+        start_offset,
+        end_offset,
+        quote_char,
+    ) = bracket_info
 
     normalized_variables_and_values = dict(
         _iter_all_normalized_variables_and_values(completion_context)
@@ -436,7 +489,7 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
                 start=Position(selection.line, start_offset),
                 end=Position(selection.line, end_offset),
             )
-            return _completion_items(dictionary, editor_range)
+            return _completion_items(dictionary, editor_range, quote_char)
 
         last_dict = _as_dictionary(variable_values, normalize=True)
 

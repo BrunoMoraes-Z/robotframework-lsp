@@ -379,3 +379,70 @@ Dictionary Variable
         CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
     )
     assert {item["label"] for item in completions} == {"work"}
+
+
+
+def test_dictionary_entries_dot_then_bracket(workspace, libspec_manager):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """*** Variables ***
+&{DICT_1}   address=&{DICT_2}
+&{DICT_2}   street=Rua A   number=123   city=São Paulo   custom=&{DICT_3}
+&{DICT_3}   note=Apartamento 45   code=SP12345
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${DICT_1.address['']}
+"""
+
+    line = doc.find_line_with_contents("    Log    ${DICT_1.address['']}")
+    line_text = doc.source.splitlines()[line]
+    prefix = "${DICT_1.address['"
+    col = line_text.index("${DICT_1.address['']}") + len(prefix)
+
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+
+    assert {item["label"] for item in completions} == {
+        "street",
+        "number",
+        "city",
+        "custom",
+    }
+
+
+def test_dictionary_entries_bracket_inserts_quotes_when_missing(
+    workspace, libspec_manager
+):
+    from robotframework_ls.impl.completion_context import CompletionContext
+    from robotframework_ls.impl import dictionary_completions
+
+    workspace.set_root("case2", libspec_manager=libspec_manager)
+    doc = workspace.put_doc("case2.robot")
+    doc.source = """*** Variables ***
+&{DICT_1}   address=&{DICT_2}
+&{DICT_2}   street=Rua A   number=123   city=São Paulo   custom=&{DICT_3}
+&{DICT_3}   note=Apartamento 45   code=SP12345
+
+*** Test Cases ***
+Dictionary Variable
+    Log    ${DICT_1.address[]}
+"""
+
+    line = doc.find_line_with_contents("    Log    ${DICT_1.address[]}")
+    line_text = doc.source.splitlines()[line]
+    prefix = "${DICT_1.address["
+    col = line_text.index("${DICT_1.address[]}") + len(prefix)
+
+    completions = dictionary_completions.complete(
+        CompletionContext(doc, workspace=workspace.ws, line=line, col=col)
+    )
+
+    custom_completion = next(item for item in completions if item["label"] == "custom")
+
+    assert custom_completion["textEdit"]["newText"] == "'custom'"
+    assert custom_completion["insertText"] == "'custom'"
