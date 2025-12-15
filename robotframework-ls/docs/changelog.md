@@ -5,6 +5,7 @@ New in 1.14.0 (2025-02-14)
 
 - Language server clients are now auto-detected, seamlessly switching between the legacy Robocorp Code extension and the newer Sema4.ai extension.
 - Added a configuration toggle (`robot.completions.dictionaryEntries.enable`) to decide when dictionary key completions should be suggested.
+- Completion suggestions now recognize Robot Framework 7.4 typed variables, including the new `Secret` type and other builtin converters.
 
 ### Bugfixes
 

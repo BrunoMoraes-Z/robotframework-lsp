@@ -10,7 +10,10 @@ from robocorp_ls_core.lsp import (
     CompletionItemTypedDict,
 )
 from robotframework_ls.impl.protocols import ICompletionContext
-from robotframework_ls.impl.robot_version import robot_version_supports_variable_types
+from robotframework_ls.impl.robot_version import (
+    robot_version_supports_secret_variables,
+    robot_version_supports_variable_types,
+)
 
 
 import datetime
@@ -25,6 +28,8 @@ _BUILTIN_TYPES = [
     dict,
     set,
     bytes,
+    bytearray,
+    object,
     datetime.date,
     datetime.datetime,
 ]
@@ -32,7 +37,18 @@ _BUILTIN_TYPES = [
 
 def _gather_type_names(completion_context: ICompletionContext) -> List[str]:
     """Return only builtin type names."""
-    return sorted({t.__name__ for t in _BUILTIN_TYPES})
+    type_names = {t.__name__ for t in _BUILTIN_TYPES}
+
+    if robot_version_supports_secret_variables():
+        try:
+            from robot.api.types import Secret
+        except Exception:
+            # If Robot Framework is not available or is older than 7.4, just skip it.
+            pass
+        else:
+            type_names.add(Secret.__name__)
+
+    return sorted(type_names)
 
 
 def _matches_context(prefix: str) -> bool:
