@@ -128,8 +128,9 @@ def complete_all(
         ret.extend(var_scope_completions.complete(completion_context))
         ret.extend(keyword_parameter_completions.complete(completion_context))
 
-    if not ret:
-        ret.extend(dictionary_completions.complete(completion_context))
+    # Always try dictionary completions so that key suggestions are available even
+    # when other providers (like Secret attribute completions) produced results.
+    ret.extend(dictionary_completions.complete(completion_context))
 
     return ret
 
