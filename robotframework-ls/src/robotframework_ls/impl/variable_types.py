@@ -20,6 +20,7 @@ class VariableFoundFromToken(object):
         variable_name=None,
         variable_kind=VariableKind.VARIABLE,
         stack: Optional[Tuple[INode, ...]] = None,
+        variable_type: Optional[str] = None,
     ):
         self.completion_context = completion_context
         self.stack = stack
@@ -37,6 +38,7 @@ class VariableFoundFromToken(object):
         else:
             self.variable_value = str(variable_value)
         self.variable_kind = variable_kind
+        self.variable_type: Optional[str] = variable_type
         self._is_local_variable = self.variable_kind in LOCAL_ASSIGNS_VARIABLE_KIND
         if self._is_local_variable:
             assert stack, f"Stack not available for local variable: {self.variable_name} at line: {self.lineno}"
@@ -121,7 +123,12 @@ class VariableFoundFromSettings(object):
     variable_kind: str = VariableKind.SETTINGS
 
     def __init__(
-        self, variable_name: str, variable_value: Any, source: str = "", lineno: int = 0
+        self,
+        variable_name: str,
+        variable_value: Any,
+        source: str = "",
+        lineno: int = 0,
+        variable_type: Optional[str] = None,
     ):
         self.completion_context: Optional[ICompletionContext] = None
         self.variable_name: str = variable_name
@@ -129,6 +136,7 @@ class VariableFoundFromSettings(object):
         self._source: str = source
         self._lineno: int = lineno
         self.stack: Optional[Tuple[INode, ...]] = None
+        self.variable_type: Optional[str] = variable_type
 
     @property
     def is_local_variable(self):

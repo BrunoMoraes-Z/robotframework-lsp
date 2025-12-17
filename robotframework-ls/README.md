@@ -42,10 +42,11 @@ See: [Contributing](docs/contributing.md) for how to help in the development of 
 
 See: [Reporting Issue](docs/reporting_issues.md) for details on how to report some issue in the `Robot Framework Language Server`.
 
-## Features (1.14.0)
+## Features (1.15.0)
 
 -   Automatic client detection between Robocorp Code and Sema4.ai VSCode extensions.
 -   Configurable dictionary key completions (`robot.completions.dictionaryEntries.enable`).
+-   Robot Framework 7.4 typed variable completions, including the `Secret` type when available.
 -   Robot Output View:
     -   View current task/test being executed.
     -   Shows Keyword being executed in real time.

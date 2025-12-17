@@ -32,6 +32,7 @@ from robotframework_ls.impl.robot_lsp_constants import (
     OPTION_ROBOT_LINT_IGNORE_ENVIRONMENT_VARIABLES,
 )
 from robotframework_ls.impl.robot_constants import STDLIBS_LOWER
+from robotframework_ls.impl.robot_version import robot_version_supports_secret_variables
 import typing
 
 
@@ -618,6 +619,14 @@ def collect_analysis_errors(initial_completion_context):
     if len(errors) >= MAX_ERRORS:
         return errors
 
+    for error in _collect_secret_variables_literal_errors(initial_completion_context):
+        errors.append(error)
+        if len(errors) >= MAX_ERRORS:
+            break
+
+    if len(errors) >= MAX_ERRORS:
+        return errors
+
     _collect_unused_keyword_errors(initial_completion_context, errors)
 
     return errors
@@ -713,6 +722,88 @@ def _env_vars_upper():
     import os
 
     return tuple(x.upper() for x in os.environ)
+
+
+def _type_declares_secret(type_part: str) -> bool:
+    for raw_type in type_part.split("|"):
+        normalized = raw_type.strip()
+        if not normalized:
+            continue
+
+        normalized = normalized.split("[", 1)[0].strip()
+        if normalized.lower() == "secret":
+            return True
+
+    return False
+
+
+def _value_has_variable_reference(value: str) -> bool:
+    return any(marker in value for marker in ("${", "%{", "@{", "&{"))
+
+
+def _iter_secret_variable_argument_tokens(ast):
+    from robot.api import Token
+    from robotframework_ls.impl import ast_utils
+    from robotframework_ls.impl.variable_resolve import robot_search_variable
+
+    for variable_node_info in ast_utils.iter_variables(ast):
+        variable_node = variable_node_info.node
+        variable_token = variable_node.get_token(Token.VARIABLE)
+        if variable_token is None:
+            continue
+
+        variable_match = robot_search_variable(variable_token.value)
+        if variable_match is None or not variable_match.base:
+            continue
+
+        base_name = variable_match.base
+        colon_i = base_name.find(":")
+        if colon_i == -1:
+            continue
+
+        type_part = base_name[colon_i + 1 :].strip()
+        if not type_part:
+            continue
+
+        if not _type_declares_secret(type_part):
+            continue
+
+        argument_tokens = [
+            tok for tok in variable_node.tokens if tok.type == Token.ARGUMENT
+        ]
+        if not argument_tokens:
+            continue
+
+        yield variable_node_info, argument_tokens
+
+
+def _collect_secret_variables_literal_errors(initial_completion_context):
+    from robotframework_ls.impl.ast_utils import create_error_from_node
+
+    if not robot_version_supports_secret_variables():
+        return
+
+    config = initial_completion_context.config
+    if config is not None and not config.get_setting(
+        OPTION_ROBOT_LINT_VARIABLES, bool, True
+    ):
+        return
+
+    ast = initial_completion_context.get_ast()
+    for variable_node_info, argument_tokens in _iter_secret_variable_argument_tokens(
+        ast
+    ):
+        for argument_token in argument_tokens:
+            if _value_has_variable_reference(argument_token.value):
+                continue
+
+            message = (
+                "Secret variables cannot be initialized with literal values. "
+                "Use an environment variable or another secret variable instead (for example %{NAME})."
+            )
+            yield create_error_from_node(
+                variable_node_info.node, message, tokens=[argument_token]
+            )
 
 
 def _collect_undefined_variables_errors(initial_completion_context):
