@@ -80,3 +80,10 @@ def robot_version_supports_language():
 def robot_version_supports_variable_types() -> bool:
     """Return True if the Robot Framework version supports typed variables."""
     return get_robot_major_minor_version() >= (7, 3)
+
+
+def robot_version_supports_secret_variables() -> bool:
+    """Return True if the Robot Framework version supports secret variables."""
+
+    # Secret variables were added in Robot Framework 7.4.
+    return get_robot_major_minor_version() >= (7, 4)

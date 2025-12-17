@@ -21,9 +21,26 @@ from robotframework_ls.impl.variable_types import (
     VariableFoundFromYaml,
 )
 from robotframework_ls.impl.ast_utils import KEYWORD_SET_ENV_TO_VAR_KIND
+from robotframework_ls.impl.robot_version import robot_version_supports_secret_variables
 
 
 log = get_logger(__name__)
+
+
+def _type_declares_secret(type_part: Optional[str]) -> bool:
+    if not type_part:
+        return False
+
+    for raw_type in type_part.split("|"):
+        normalized = raw_type.strip()
+        if not normalized:
+            continue
+
+        normalized = normalized.split("[", 1)[0].strip()
+        if normalized.lower() == "secret":
+            return True
+
+    return False
 
 
 class _Collector(AbstractVariablesCollector):
@@ -470,6 +487,93 @@ def collect_global_variables(
         _collect_global_static_variables(completion_context, collector)
 
 
+def _normalized_base_var_name(raw_value: str) -> str:
+    base = raw_value.split(".", 1)[0]
+    base = base.split("[", 1)[0]
+    return normalize_robot_name(base)
+
+
+def _get_variable_type_from_current_doc(
+    completion_context: ICompletionContext, base_name: str
+) -> Optional[str]:
+    try:
+        doc_variables = completion_context.get_doc_normalized_var_name_to_var_found()
+    except Exception:
+        log.exception("Error collecting variables from current document for completions.")
+        return None
+
+    var_found = doc_variables.get(base_name)
+    if var_found is None:
+        return None
+
+    return getattr(var_found, "variable_type", None)
+
+
+def _build_secret_value_completion(
+    completion_context: ICompletionContext, var_token_info: TokenInfo
+) -> Optional[List[CompletionItemTypedDict]]:
+    if not robot_version_supports_secret_variables():
+        return None
+
+    base_name = _normalized_base_var_name(var_token_info.token.value)
+    variable_type = _get_variable_type_from_current_doc(completion_context, base_name)
+    if not _type_declares_secret(variable_type):
+        return None
+
+    token_value = var_token_info.token.value
+
+    dot_offset_in_token = None
+    suffix_after_dot = ""
+
+    if var_token_info.var_info.extended_part.startswith("."):
+        dot_offset_in_token = len(token_value)
+        suffix_after_dot = var_token_info.var_info.extended_part[1:]
+    elif "." in token_value:
+        dot_offset_in_token = token_value.rfind(".")
+        suffix_after_dot = token_value[dot_offset_in_token + 1 :]
+
+    if dot_offset_in_token is None:
+        return None
+
+    dot_col = var_token_info.token.col_offset + dot_offset_in_token
+
+    # Determine the prefix already typed after the dot from the actual document text.
+    line_text = completion_context.doc.get_line(completion_context.sel.line)
+    if dot_col + 1 > len(line_text):
+        return None
+
+    typed_prefix = line_text[dot_col + 1 : completion_context.sel.col]
+
+    if not "value".startswith(typed_prefix):
+        return None
+
+    from robocorp_ls_core.lsp import (
+        CompletionItem,
+        CompletionItemKind,
+        InsertTextFormat,
+        Position,
+        Range,
+        TextEdit,
+    )
+
+    text_edit = TextEdit(
+        Range(
+            start=Position(completion_context.sel.line, dot_col + 1),
+            end=Position(completion_context.sel.line, completion_context.sel.col),
+        ),
+        "value",
+    )
+
+    return [
+        CompletionItem(
+            "value",
+            kind=CompletionItemKind.Property,
+            text_edit=text_edit,
+            insertTextFormat=InsertTextFormat.PlainText,
+        ).to_dict()
+    ]
+
+
 def collect_local_variables(
     completion_context: ICompletionContext,
     collector: IVariablesCollector,
@@ -528,6 +632,12 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
             value_for_match = value[:colon_i].rstrip()
         in_assign = var_token_info.token.type == var_token_info.token.ASSIGN
 
+        secret_value_items: Optional[List[CompletionItemTypedDict]] = None
+        if not in_assign:
+            secret_value_items = _build_secret_value_completion(
+                completion_context, var_token_info
+            )
+
         in_expression = (
             var_token_info.var_info.context == AdditionalVarInfo.CONTEXT_EXPRESSION
         )
@@ -547,6 +657,12 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
         collect_variables(
             completion_context, collector, only_current_doc=only_current_doc
         )
+        if secret_value_items:
+            existing_labels = {item["label"] for item in collector.completion_items}
+            for item in secret_value_items:
+                if item["label"] not in existing_labels:
+                    collector.completion_items.append(item)
+
         return collector.completion_items
 
     # Ok, we don't have a variable started, so, let's see if we're in a scope

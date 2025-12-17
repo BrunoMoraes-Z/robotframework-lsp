@@ -348,8 +348,10 @@ class CompletionContext(object):
                 token, variable_match
             )
             base_name = variable_match.base
+            variable_type = None
             colon_i = base_name.find(":")
             if colon_i != -1:
+                variable_type = base_name[colon_i + 1 :].strip()
                 base_name = base_name[:colon_i].rstrip()
             ret[normalize_robot_name(base_name)] = VariableFoundFromToken(
                 self,
@@ -357,6 +359,7 @@ class CompletionContext(object):
                 variable_node.value,
                 variable_name=base_name,
                 stack=variable_node_info.stack,
+                variable_type=variable_type,
             )
 
         return ret
