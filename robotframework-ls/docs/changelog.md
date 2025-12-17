@@ -1,3 +1,17 @@
+New in 1.15.0 (2025-12-17)
+-----------------------------
+
+### New features
+
+- Completion suggestions now recognize Robot Framework 7.4 typed variables, including the new `Secret` type and other builtin converters.
+- Language server features that rely on Robot Framework 7.4 are gated to only activate when the detected runtime supports them.
+- Linting now flags typed `Secret` variables initialized with literal values to reflect Robot Framework 7.4 restrictions.
+
+### Bugfixes
+
+- Guarded 7.4-specific completions to avoid offering unsupported types on earlier Robot Framework versions.
+
+
 New in 1.14.0 (2025-02-14)
 -----------------------------
 

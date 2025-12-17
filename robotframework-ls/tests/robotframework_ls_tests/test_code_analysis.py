@@ -1,4 +1,7 @@
-from robotframework_ls.impl.robot_version import get_robot_major_version
+from robotframework_ls.impl.robot_version import (
+    get_robot_major_version,
+    robot_version_supports_secret_variables,
+)
 import pytest
 from robocorp_ls_core.protocols import IDocument
 from pathlib import Path
@@ -3046,3 +3049,58 @@ Mark unused used
     # It'll turn out ok when our indexes are updated based on changes in the
     # filesystem.
     wait_for_non_error_condition(check)
+
+
+@pytest.mark.skipif(
+    not robot_version_supports_secret_variables(),
+    reason="Secret variables require Robot Framework 7.4+.",
+)
+def test_secret_variable_literal_rejected(
+    workspace, libspec_manager, data_regression
+):
+    workspace.set_root("case_vars_file", libspec_manager=libspec_manager)
+    doc = workspace.put_doc(
+        "secret_literal.robot",
+        """*** Variables ***
+${SECRET_TOKEN: Secret}    robot123
+
+*** Test Cases ***
+Test
+    No Operation
+""",
+    )
+
+    _collect_errors(
+        workspace,
+        doc,
+        data_regression,
+        basename="secret_variable_literal_rejected",
+    )
+
+
+@pytest.mark.skipif(
+    not robot_version_supports_secret_variables(),
+    reason="Secret variables require Robot Framework 7.4+.",
+)
+def test_secret_variable_literal_allowed(
+    workspace, libspec_manager, data_regression
+):
+    workspace.set_root("case_vars_file", libspec_manager=libspec_manager)
+    doc = workspace.put_doc(
+        "secret_literal_allowed.robot",
+        """*** Variables ***
+${SOURCE_SECRET: Secret}    %{=robot123}
+${JOINED_SECRET: Secret}    ${SOURCE_SECRET}-tail
+
+*** Test Cases ***
+Test
+    No Operation
+""",
+    )
+
+    _collect_errors(
+        workspace,
+        doc,
+        data_regression,
+        basename="secret_variable_literal_allowed",
+    )
