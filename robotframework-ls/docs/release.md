@@ -6,7 +6,7 @@ Steps to do a new release
 
 - Create release branch (`git branch -D release-robotframework-lsp&git checkout -b release-robotframework-lsp`)
 
-- Update version (`python -m dev set-version 1.14.0`).
+- Update version (`python -m dev set-version 1.15.0`).
 
 - Update README.md to add notes on features/fixes (on `robotframework-ls` and `robotframework-intellij`).
 
@@ -16,27 +16,27 @@ Steps to do a new release
   - Use `https://markdowntohtml.com/` to convert the changelog to HTML.
 
 - Push contents, get the build in https://github.com/robocorp/robotframework-lsp/actions and install locally to test.
-  - `mu acp Robot Framework Language Server Release 1.14.0`
+  - `mu acp Robot Framework Language Server Release 1.15.0`
 
 - Rebase with master (`git checkout master&git rebase release-robotframework-lsp`).
 
-- Create a tag (`git tag robotframework-lsp-1.14.0`) and push it.
+- Create a tag (`git tag robotframework-lsp-1.15.0`) and push it.
 
 - Send release msg. i.e.:
 
 Hi @channel,
 
-I'm happy to announce the release of `Robot Framework Language Server 1.14.0`.
+I'm happy to announce the release of `Robot Framework Language Server 1.15.0`.
 
 ### New features
 
-- The language server now detects whether the Robocorp Code or Sema4.ai client is active and adjusts its integration automatically.
-- New configuration toggle (`robot.completions.dictionaryEntries.enable`) allows choosing when dictionary key completions should appear.
+- Completion suggestions now recognize Robot Framework 7.4 typed variables, including the new `Secret` type and other builtin converters.
+- Language server features that rely on Robot Framework 7.4 are gated to only activate when the detected runtime supports them.
 
 
 ### Bugfixes
 
-- Improved resiliency when dictionary completions are disabled in workspaces that build keywords dynamically.
+- Guarded 7.4-specific completions to avoid offering unsupported types on earlier Robot Framework versions.
 
 ### Intellij
 
