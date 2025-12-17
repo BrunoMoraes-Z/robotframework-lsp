@@ -632,12 +632,11 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
             value_for_match = value[:colon_i].rstrip()
         in_assign = var_token_info.token.type == var_token_info.token.ASSIGN
 
+        secret_value_items: Optional[List[CompletionItemTypedDict]] = None
         if not in_assign:
             secret_value_items = _build_secret_value_completion(
                 completion_context, var_token_info
             )
-            if secret_value_items:
-                return secret_value_items
 
         in_expression = (
             var_token_info.var_info.context == AdditionalVarInfo.CONTEXT_EXPRESSION
@@ -658,6 +657,12 @@ def complete(completion_context: ICompletionContext) -> List[CompletionItemTyped
         collect_variables(
             completion_context, collector, only_current_doc=only_current_doc
         )
+        if secret_value_items:
+            existing_labels = {item["label"] for item in collector.completion_items}
+            for item in secret_value_items:
+                if item["label"] not in existing_labels:
+                    collector.completion_items.append(item)
+
         return collector.completion_items
 
     # Ok, we don't have a variable started, so, let's see if we're in a scope
